@@ -8,6 +8,12 @@ on:
       - 'feature/**'
       - 'release/**'
       - 'hotfix/**'
+    # Documentation-only pushes don't need a build (and on master would otherwise make a release draft).
+    paths-ignore:
+      - 'README.md'
+      - 'RELEASING.md'
+      - 'LICENCE'
+      - 'ReadmeAssets/**'
   pull_request:
     branches:
       - master

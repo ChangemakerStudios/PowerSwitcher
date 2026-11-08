@@ -53,12 +53,15 @@ The packages are framework-dependent: Setup installs the .NET 10 Desktop Runtime
    git push origin master --tags
    ```
    CI builds and packages x64 and Arm64 and uploads them to a **draft** GitHub release `X.Y.Z`.
-5. **Publish the draft** on GitHub (Releases → the draft → Publish). Installed `-stable` copies pick it up within 12 hours.
+5. **Publish the draft** on GitHub (Releases → the draft → Publish), or `gh release edit X.Y.Z --draft=false --latest`. Installed `-stable` copies pick it up within 12 hours.
 6. **Merge back into `develop`**
    ```bash
    git checkout develop && git merge --no-ff release/X.Y.Z && git push origin develop
    git branch -d release/X.Y.Z
    ```
+   If the release branch had no commits of its own, that merge is a no-op and the `X.Y.Z` tag (on `master`'s merge commit) isn't in `develop`'s history, so `develop` would keep building `X.Y.Z-alpha.N`. Bring the tag in with `git merge master` (a fast-forward) instead; the next `develop` build should then be `X.Y.(Z+1)-alpha.0`.
+
+Pushes that only touch the README, RELEASING.md, `ReadmeAssets/` or the licence don't run the pipeline, so documentation can go straight to `master` without making a release.
 
 ## Pre-releases (from `develop`)
 
