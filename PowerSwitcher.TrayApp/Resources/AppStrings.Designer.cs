@@ -88,29 +88,11 @@ namespace PowerSwitcher.TrayApp.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Automaticly change schema when on AC.
-        /// </summary>
-        internal static string AutomaticOnOffACSwitch {
-            get {
-                return ResourceManager.GetString("AutomaticOnOffACSwitch", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Exit.
         /// </summary>
         internal static string Exit {
             get {
                 return ResourceManager.GetString("Exit", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Hide flyout after schema change.
-        /// </summary>
-        internal static string HideFlyoutAfterSchemaChangeSwitch {
-            get {
-                return ResourceManager.GetString("HideFlyoutAfterSchemaChangeSwitch", resourceCulture);
             }
         }
         
@@ -133,47 +115,11 @@ namespace PowerSwitcher.TrayApp.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Schema to switch to off AC.
-        /// </summary>
-        internal static string SchemaToSwitchOffAc {
-            get {
-                return ResourceManager.GetString("SchemaToSwitchOffAc", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Schema to switch to on AC.
-        /// </summary>
-        internal static string SchemaToSwitchOnAc {
-            get {
-                return ResourceManager.GetString("SchemaToSwitchOnAc", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Settings.
         /// </summary>
         internal static string Settings {
             get {
                 return ResourceManager.GetString("Settings", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Show only default power schemas.
-        /// </summary>
-        internal static string ShowOnlyDefaultSchemas {
-            get {
-                return ResourceManager.GetString("ShowOnlyDefaultSchemas", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Enable shortcut for flyout toggle.
-        /// </summary>
-        internal static string ToggleOnShowrtcutSwitch {
-            get {
-                return ResourceManager.GetString("ToggleOnShowrtcutSwitch", resourceCulture);
             }
         }
     }

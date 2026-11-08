@@ -50,6 +50,17 @@ namespace PowerSwitcher.TrayApp.Services
             return CustomPlanColors[(uint)guid.GetHashCode() % CustomPlanColors.Length];
         }
 
+        /// <summary>The badge colour as a WPF brush, for showing the same dot in windows; null when there's no badge.</summary>
+        public static System.Windows.Media.Brush BadgeBrushFor(Guid? schemaGuid, string schemaName)
+        {
+            var color = BadgeColorFor(schemaGuid, schemaName);
+            if (color == null) { return null; }
+
+            var brush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(color.Value.R, color.Value.G, color.Value.B));
+            brush.Freeze();
+            return brush;
+        }
+
         public static Icon Create(Guid? schemaGuid, string schemaName, bool isLightTheme, Size size)
         {
             using (var bitmap = CreateBitmap(schemaGuid, schemaName, isLightTheme, size))

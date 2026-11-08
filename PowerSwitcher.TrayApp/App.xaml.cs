@@ -45,7 +45,7 @@ namespace PowerSwitcher.TrayApp
             TrayApp = new TrayApp(PowerManager, Configuration); //Has to be last because it hooks to MainWindow
 
             Configuration.Data.PropertyChanged += Configuration_PropertyChanged;
-            if (Configuration.Data.ShowOnShortcutSwitch) { registerHotkeyFromConfiguration(); }
+            ApplyHotkeyFromConfiguration();
 
             TrayApp.CreateAltMenu();
 
@@ -77,24 +77,36 @@ namespace PowerSwitcher.TrayApp
         {
             if(e.PropertyName == nameof(PowerSwitcherSettings.ShowOnShortcutSwitch))
             {
-                if (Configuration.Data.ShowOnShortcutSwitch) { registerHotkeyFromConfiguration(); }
-                else { unregisterHotkeyFromConfiguration(); }
+                ApplyHotkeyFromConfiguration();
             }
         }
 
-        private void unregisterHotkeyFromConfiguration()
-        {
-            HotKeyManager.Unregister(new HotKey(Configuration.Data.ShowOnShortcutKey, Configuration.Data.ShowOnShortcutKeyModifier));
-        }
+        private HotKey registeredHotKey;
 
-        private bool registerHotkeyFromConfiguration()
+        /// <summary>
+        /// Makes the registered flyout shortcut match the configuration: drops the current one, then registers the
+        /// configured key if the shortcut is enabled. Returns false (and sets <see cref="HotKeyFailed"/>) when another
+        /// app already owns that key combination.
+        /// </summary>
+        public bool ApplyHotkeyFromConfiguration()
         {
+            if (registeredHotKey != null)
+            {
+                HotKeyManager.Unregister(registeredHotKey);
+                registeredHotKey = null;
+            }
+
+            HotKeyFailed = false;
+            if (!Configuration.Data.ShowOnShortcutSwitch) { return true; }
+
             var newHotKey = new HotKey(Configuration.Data.ShowOnShortcutKey, Configuration.Data.ShowOnShortcutKeyModifier);
+            bool registered;
+            try { registered = HotKeyManager.Register(newHotKey); }
+            catch (PowerSwitcher.Wrappers.PowerSwitcherWrappersException) { registered = false; } // e.g. a combination Windows reserves
+            if (!registered) { HotKeyFailed = true; return false; }
 
-            bool success = HotKeyManager.Register(newHotKey);
-            if(!success) { HotKeyFailed = true; return false; }
             newHotKey.HotKeyFired += (this.MainWindow as MainWindow).ToggleWindowVisibility;
-
+            registeredHotKey = newHotKey;
             return true;
         }
 

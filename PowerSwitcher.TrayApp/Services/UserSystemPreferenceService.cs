@@ -33,6 +33,20 @@ namespace PowerSwitcher.TrayApp.Services
             }
         }
 
+        /// <summary>
+        /// The "app mode" setting, which is what ordinary application windows follow. Defaults to light when absent.
+        /// </summary>
+        public static bool IsAppLightTheme
+        {
+            get
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry64))
+                {
+                    return (int)baseKey.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize").GetValue("AppsUseLightTheme", 1) > 0;
+                }
+            }
+        }
+
         public static bool UseAccentColor
         {
             get
