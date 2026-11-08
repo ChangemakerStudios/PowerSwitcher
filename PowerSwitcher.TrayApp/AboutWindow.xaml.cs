@@ -3,6 +3,7 @@ using PowerSwitcher.TrayApp.Services;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
@@ -15,16 +16,20 @@ namespace PowerSwitcher.TrayApp
     public partial class AboutWindow : ThemedDialogWindow
     {
         readonly IPowerManager pwrManager;
+        readonly UpdateService updates;
+        readonly Action restartToUpdate;
         readonly DispatcherTimer copiedFeedbackTimer;
 
-        public AboutWindow(IPowerManager powerManager)
+        public AboutWindow(IPowerManager powerManager, UpdateService updateService, Action restartToUpdate)
         {
             pwrManager = powerManager;
+            updates = updateService;
+            this.restartToUpdate = restartToUpdate;
             InitializeComponent();
 
             AppNameText.Text = AppStrings.AppName;
             Title = $"About {AppStrings.AppName}";
-            VersionText.Text = $"Version {appVersion.ToString(3)}  ·  {RuntimeInformation.FrameworkDescription}";
+            VersionText.Text = $"Version {displayVersion}  ·  {RuntimeInformation.FrameworkDescription}";
 
             var projectUrl = AppStrings.AboutAppURL.Replace("http://", "https://");
             ProjectLink.NavigateUri = new Uri(projectUrl);
@@ -36,17 +41,56 @@ namespace PowerSwitcher.TrayApp
             copiedFeedbackTimer.Tick += (s, e) => { copiedFeedbackTimer.Stop(); CopyButton.Content = "Copy details"; };
 
             updateStatus();
+            updateUpdateStatus();
             pwrManager.PropertyChanged += PwrManager_PropertyChanged;
+            updates.PropertyChanged += Updates_PropertyChanged;
         }
 
         protected override void OnClosed(EventArgs e)
         {
             pwrManager.PropertyChanged -= PwrManager_PropertyChanged;
+            updates.PropertyChanged -= Updates_PropertyChanged;
             copiedFeedbackTimer.Stop();
             base.OnClosed(e);
         }
 
-        static Version appVersion => typeof(AboutWindow).Assembly.GetName().Version;
+        /// <summary>The GitVersion-stamped version, e.g. "0.5.0-dev.3" (or "0.5.0-local" for a plain dotnet build).</summary>
+        static string fullVersion =>
+            typeof(AboutWindow).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? typeof(AboutWindow).Assembly.GetName().Version.ToString(3);
+
+        // Build metadata after '+' (branch, commit) is for bug reports, not the headline.
+        static string displayVersion => fullVersion.Split('+')[0];
+
+        #region Updates
+
+        private void Updates_PropertyChanged(object sender, PropertyChangedEventArgs e) => updateUpdateStatus();
+
+        private void updateUpdateStatus()
+        {
+            string text, action = null;
+            switch (updates.State)
+            {
+                case UpdateState.NotInstalled: text = "Only for installed copies"; break;
+                case UpdateState.Checking: text = "Checking…"; break;
+                case UpdateState.UpToDate: text = "Up to date"; action = "Check again"; break;
+                case UpdateState.Ready: text = updates.PendingVersion != null ? $"Version {updates.PendingVersion} is ready" : "An update is ready"; action = "Restart to update"; break;
+                case UpdateState.Failed: text = "Couldn't check for updates"; action = "Try again"; break;
+                default: text = "Not checked yet"; action = "Check now"; break;
+            }
+
+            UpdateText.Text = action == null ? text : text + "  ·  ";
+            UpdateActionText.Text = action ?? "";
+            UpdateAction.IsEnabled = action != null;
+        }
+
+        private async void UpdateAction_Click(object sender, RoutedEventArgs e)
+        {
+            if (updates.State == UpdateState.Ready) { restartToUpdate(); }
+            else { await updates.CheckAsync(); }
+        }
+
+        #endregion
 
         private void PwrManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -78,7 +122,7 @@ namespace PowerSwitcher.TrayApp
         private void CopyButton_Click(object sender, RoutedEventArgs e)
         {
             var details = new StringBuilder()
-                .AppendLine($"{AppStrings.AppName} {appVersion}")
+                .AppendLine($"{AppStrings.AppName} {fullVersion}{(updates.IsInstalled ? "" : " (not installed)")}")
                 .AppendLine($"{RuntimeInformation.FrameworkDescription} ({RuntimeInformation.ProcessArchitecture})")
                 .AppendLine($"Windows {Environment.OSVersion.Version} ({RuntimeInformation.OSArchitecture})")
                 .AppendLine($"Active plan: {pwrManager.CurrentSchema?.Name ?? "None"} {pwrManager.CurrentSchema?.Guid}")

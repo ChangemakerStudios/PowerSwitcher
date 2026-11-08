@@ -23,6 +23,7 @@ namespace PowerSwitcher.TrayApp
         public IPowerManager PowerManager { get; private set; }
         public TrayApp TrayApp { get; private set; }
         public ConfigurationInstance<PowerSwitcherSettings> Configuration { get; private set; }
+        public UpdateService Updates { get; private set; }
 
         private Mutex _mMutex;
         private void Application_Startup(object sender, StartupEventArgs e)
@@ -41,13 +42,15 @@ namespace PowerSwitcher.TrayApp
             HotKeyFailed = false;
 
             PowerManager = new PowerManager();
+            Updates = new UpdateService();
             MainWindow = new MainWindow();
-            TrayApp = new TrayApp(PowerManager, Configuration); //Has to be last because it hooks to MainWindow
+            TrayApp = new TrayApp(PowerManager, Configuration, Updates); //Has to be last because it hooks to MainWindow
 
             Configuration.Data.PropertyChanged += Configuration_PropertyChanged;
             ApplyHotkeyFromConfiguration();
 
             TrayApp.CreateAltMenu();
+            Updates.StartChecking();
 
             SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
         }
@@ -139,6 +142,7 @@ namespace PowerSwitcher.TrayApp
             DisposeMutex();
             PowerManager?.Dispose();
             HotKeyManager?.Dispose();
+            Updates?.ApplyOnExit(); // A downloaded update the user didn't restart for is applied now.
         }
 
         ~App()

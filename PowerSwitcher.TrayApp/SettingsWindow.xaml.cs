@@ -59,6 +59,7 @@ namespace PowerSwitcher.TrayApp
             HideAfterClickToggle.IsChecked = data.AutomaticFlyoutHideAfterClick;
             OnlyDefaultToggle.IsChecked = data.ShowOnlyDefaultSchemas;
             ShortcutToggle.IsChecked = data.ShowOnShortcutSwitch;
+            StartupToggle.IsChecked = RunAtStartupService.IsEnabled;
 
             pwrManager.UpdateSchemas();
             loadPlans();
@@ -225,10 +226,30 @@ namespace PowerSwitcher.TrayApp
             ShortcutPicker.IsEnabled = ShortcutToggle.IsChecked == true;
         }
 
-        private void OpenStartupSettings_Click(object sender, RoutedEventArgs e)
+        #region Startup
+
+        private void StartupToggle_Changed(object sender, RoutedEventArgs e)
         {
-            Process.Start(new ProcessStartInfo("ms-settings:startupapps") { UseShellExecute = true });
+            if (loading) { return; }
+
+            var enable = StartupToggle.IsChecked == true;
+            try
+            {
+                RunAtStartupService.Set(enable);
+                StartupError.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is System.Security.SecurityException || ex is System.IO.IOException)
+            {
+                StartupError.Text = $"Couldn't {(enable ? "turn on" : "turn off")} starting with Windows: {ex.Message}";
+                StartupError.Visibility = Visibility.Visible;
+
+                loading = true;
+                StartupToggle.IsChecked = RunAtStartupService.IsEnabled; // Show what's actually in effect.
+                loading = false;
+            }
         }
+
+        #endregion
 
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
     }

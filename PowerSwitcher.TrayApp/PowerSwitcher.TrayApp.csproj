@@ -4,34 +4,24 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <ApplicationIcon>Tray.ico</ApplicationIcon>
+    <ApplicationIcon>AppIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <OutputPath>..\Build\$(Configuration)\</OutputPath>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-  </PropertyGroup>
-
-  <!-- The Store package is x86 and can't assume the .NET runtime is installed, so it ships a self-contained single exe. -->
-  <PropertyGroup Condition="'$(Configuration)' == 'ReleaseAndPackage'">
-    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <PublishDir>..\Build\Publish\</PublishDir>
+    <!-- Program.Main, so Velopack's install/update/uninstall hooks run before anything else. -->
+    <StartupObject>PowerSwitcher.TrayApp.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
+    <Resource Include="AppIcon.ico" />
     <Resource Include="Tray.ico" />
     <Resource Include="TrayLightTheme.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="1.2.158" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Petrroll.Helpers\Petrroll.Helpers.csproj" />
     <ProjectReference Include="..\PowerSwitcher\PowerSwitcher.csproj" />
   </ItemGroup>
-
-  <Target Name="PublishAndPackageAppx" AfterTargets="Build" Condition="'$(Configuration)' == 'ReleaseAndPackage'">
-    <CallTarget Targets="Publish" />
-    <Exec Command=".\PackageScript.bat" WorkingDirectory="..\PowerSwitcher.Appx" />
-  </Target>
 </Project>

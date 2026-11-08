@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PowerSwitcher.TrayApp"
         Title="PowerPlanSwitcher Settings"
-        Icon="Tray.ico"
+        Icon="AppIcon.ico"
         Width="560"
         SizeToContent="Height"
         ResizeMode="NoResize"
@@ -134,17 +134,17 @@
         <TextBlock Style="{StaticResource SectionHeader}" Text="Startup" />
 
         <Border Style="{StaticResource Card}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock Style="{StaticResource SettingTitle}" Text="Start with Windows" />
-                    <TextBlock Style="{StaticResource SettingDescription}" Text="Windows manages this, under Settings › Apps › Startup." />
-                </StackPanel>
-                <Button Grid.Column="1" Style="{StaticResource DialogButton}" Content="Open startup apps" Click="OpenStartupSettings_Click" />
-            </Grid>
+            <StackPanel>
+                <CheckBox x:Name="StartupToggle" Style="{StaticResource ToggleSwitch}"
+                          Checked="StartupToggle_Changed" Unchecked="StartupToggle_Changed">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SettingTitle}" Text="Start with Windows" />
+                        <TextBlock Style="{StaticResource SettingDescription}" Text="Put PowerPlanSwitcher in the tray when you sign in." />
+                    </StackPanel>
+                </CheckBox>
+                <TextBlock x:Name="StartupError" Foreground="{DynamicResource Critical}" TextWrapping="Wrap"
+                           Margin="0,8,0,0" Visibility="Collapsed" />
+            </StackPanel>
         </Border>
 
         <!-- Footer -->

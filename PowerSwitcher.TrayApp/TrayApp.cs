@@ -22,10 +22,11 @@ namespace PowerSwitcher.TrayApp
         public event Action ShowFlyout;
         IPowerManager pwrManager;
         ConfigurationInstance<PowerSwitcherSettings> configuration;
+        UpdateService updates;
         #endregion
 
         #region Contructor
-        public TrayApp(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config)
+        public TrayApp(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config, UpdateService updateService)
         {
             this.pwrManager = powerManager;
             pwrManager.PropertyChanged += PwrManager_PropertyChanged;
@@ -33,11 +34,15 @@ namespace PowerSwitcher.TrayApp
             configuration = config;
             configuration.Data.PropertyChanged += Settings_PropertyChanged;
 
+            updates = updateService;
+            updates.UpdateReady += Updates_UpdateReady;
+
             // WPF doesn't do this for WinForms, and without it ToolStrip renderers ignore their colour table.
             WF.Application.EnableVisualStyles();
 
             _trayIcon = new WF.NotifyIcon();
             _trayIcon.MouseClick += TrayIcon_MouseClick;
+            _trayIcon.BalloonTipClicked += (s, e) => About_Click(s, e);
 
             UpdateTheme();
             _trayIcon.Visible = true;
@@ -58,6 +63,13 @@ namespace PowerSwitcher.TrayApp
 
             var contextMenuRootItems = contextMenuRoot.Items;
             contextMenuRootItems.Add(new WF.ToolStripSeparator());
+
+            // Shown once an update has downloaded; see Updates_UpdateReady.
+            var updateItem = addMenuItem(contextMenuRootItems, "");
+            updateItem.Name = "update";
+            updateItem.Font = new System.Drawing.Font(updateItem.Font, System.Drawing.FontStyle.Bold);
+            updateItem.Click += (s, e) => RestartToUpdate();
+            updateItem.Visible = false;
 
             var settingsItem = addMenuItem(contextMenuRootItems, $"{AppStrings.Settings}…");
             settingsItem.Name = "settings";
@@ -248,12 +260,39 @@ namespace PowerSwitcher.TrayApp
 
         #region OtherItemsClicked
 
+        #region Updates
+
+        private void Updates_UpdateReady()
+        {
+            var updateItem = _trayIcon.ContextMenuStrip?.Items["update"];
+            if (updateItem != null)
+            {
+                updateItem.Text = $"Restart to update to {updates.PendingVersion}";
+                updateItem.Visible = true;
+            }
+
+            _trayIcon.ShowBalloonTip(10000, $"{AppStrings.AppName} {updates.PendingVersion} is ready",
+                "Restart from the tray menu to update, or it'll be applied the next time the app closes.", WF.ToolTipIcon.Info);
+        }
+
+        /// <summary>Restarts into a downloaded update.</summary>
+        public void RestartToUpdate()
+        {
+            if (updates.State != UpdateState.Ready) { return; }
+
+            // Velopack ends the process without WPF's Exit, so don't leave a ghost icon in the tray.
+            _trayIcon.Visible = false;
+            updates.ApplyAndRestart();
+        }
+
+        #endregion
+
         private AboutWindow aboutWindow;
         private SettingsWindow settingsWindow;
 
         void About_Click(object sender, EventArgs e)
         {
-            showSingleWindow(ref aboutWindow, () => new AboutWindow(pwrManager), w => aboutWindow = null);
+            showSingleWindow(ref aboutWindow, () => new AboutWindow(pwrManager, updates, RestartToUpdate), w => aboutWindow = null);
         }
 
         void Settings_Click(object sender, EventArgs e)

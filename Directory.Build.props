@@ -1,11 +1,15 @@
 <Project>
   <PropertyGroup>
-    <Configurations>Debug;Release;ReleaseAndPackage</Configurations>
-    <!-- Assembly attributes, including the app version, live in each project's Properties\AssemblyInfo.cs. -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Company>Changemaker Studios</Company>
+    <Product>PowerPlanSwitcher</Product>
+    <Description>Switch Windows power plans from the tray.</Description>
+    <Copyright>Copyright © 2016 - 2026 Petr Houška and contributors</Copyright>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'ReleaseAndPackage'">
-    <Optimize>true</Optimize>
-    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
+
+  <PropertyGroup>
+    <!-- GitVersion supplies these in build.cake; plain `dotnet build` gets a recognisably local version. -->
+    <Version Condition="'$(Version)' == ''">0.5.0-local</Version>
+    <!-- No "+<commit sha>" suffix on InformationalVersion; GitVersion's own value already says what it needs to. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 </Project>

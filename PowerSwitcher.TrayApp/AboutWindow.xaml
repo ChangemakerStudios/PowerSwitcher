@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PowerSwitcher.TrayApp"
         Title="About PowerPlanSwitcher"
-        Icon="Tray.ico"
+        Icon="AppIcon.ico"
         Width="440"
         SizeToContent="Height"
         ResizeMode="NoResize"
@@ -54,6 +54,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition />
                     <RowDefinition />
+                    <RowDefinition />
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource Secondary}" Text="Active plan" Margin="0,2,20,2" />
@@ -64,6 +65,12 @@
 
                 <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource Secondary}" Text="Power source" Margin="0,2,20,2" />
                 <TextBlock Grid.Row="1" Grid.Column="1" x:Name="PowerSourceText" Text="Plugged in" Margin="0,2" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource Secondary}" Text="Updates" Margin="0,2,20,2" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,2" TextWrapping="Wrap">
+                    <Run x:Name="UpdateText" Text="Up to date" />
+                    <Hyperlink x:Name="UpdateAction" Click="UpdateAction_Click"><Run x:Name="UpdateActionText" Text="Check now" /></Hyperlink>
+                </TextBlock>
             </Grid>
         </Border>
 
