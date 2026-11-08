@@ -13,22 +13,67 @@ namespace PowerSwitcher.TrayApp.Services
             get { return !SystemParameters.HighContrast && UserSystemPreferencesService.IsTransparencyEnabled; }
         }
 
+        public static bool IsHighContrast
+        {
+            get { return SystemParameters.HighContrast; }
+        }
+
+        /// <summary>
+        /// True when shell surfaces are light, meaning that anything drawn on them, such as the tray icon, has to be dark.
+        /// </summary>
+        public static bool IsLightTheme
+        {
+            get
+            {
+                if (!SystemParameters.HighContrast) { return UserSystemPreferencesService.IsSystemLightTheme; }
+
+                var background = SystemColors.WindowColor;
+                return (background.R * 299 + background.G * 587 + background.B * 114) / 1000 > 127;
+            }
+        }
+
         public static void UpdateThemeResources(ResourceDictionary dictionary)
         {
-            dictionary["WindowBackground"] = new SolidColorBrush(GetWindowBackgroundColor());
+            if (SystemParameters.HighContrast)
+            {
+                ApplyHighContrastColors(dictionary);
+            }
+            else
+            {
+                ApplyThemeColors(dictionary, UserSystemPreferencesService.IsSystemLightTheme);
+            }
+        }
 
-            ReplaceBrush(dictionary, "WindowForeground", "ImmersiveApplicationTextDarkTheme"); 
+        private static void ApplyHighContrastColors(ResourceDictionary dictionary)
+        {
+            dictionary["WindowBackground"] = new SolidColorBrush(SystemColors.WindowColor);
+            dictionary["WindowForeground"] = new SolidColorBrush(SystemColors.WindowTextColor);
+            dictionary["ItemHighlightForeground"] = new SolidColorBrush(SystemColors.HighlightTextColor);
+            dictionary["SelectedItemBackground"] = new SolidColorBrush(SystemColors.HighlightColor);
+            dictionary["MouseOverSelectedItemBackground"] = new SolidColorBrush(SystemColors.HighlightColor);
+            dictionary["MouseOverItemBackground"] = new SolidColorBrush(SystemColors.HighlightColor);
+        }
+
+        private static void ApplyThemeColors(ResourceDictionary dictionary, bool isLight)
+        {
+            var foreground = isLight ? "ImmersiveApplicationTextLightTheme" : "ImmersiveApplicationTextDarkTheme";
+
+            dictionary["WindowBackground"] = new SolidColorBrush(GetWindowBackgroundColor(isLight));
+
+            ReplaceBrush(dictionary, "WindowForeground", foreground);
+            ReplaceBrush(dictionary, "ItemHighlightForeground", foreground);
             ReplaceBrushWithOpacity(dictionary, "SelectedItemBackground", "ImmersiveSystemAccent", 0.5);
             ReplaceBrushWithOpacity(dictionary, "MouseOverSelectedItemBackground", "ImmersiveSystemAccent", 0.75);
             ReplaceBrushWithOpacity(dictionary, "MouseOverItemBackground", "ImmersiveControlLightSelectHighlightSelectedHover", 0.3);
         }
 
-        private static Color GetWindowBackgroundColor()
+        private static Color GetWindowBackgroundColor(bool isLight)
         {
             string resource;
-            if (SystemParameters.HighContrast)
+            if (isLight)
             {
-                resource = "ImmersiveApplicationBackground";
+                // Windows only offers accent-coloured shell surfaces in dark mode.
+                resource = "ImmersiveLightChromeLow";
             }
             else if (UserSystemPreferencesService.UseAccentColor)
             {

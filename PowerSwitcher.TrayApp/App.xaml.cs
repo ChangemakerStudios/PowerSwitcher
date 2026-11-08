@@ -1,4 +1,5 @@
-﻿using Petrroll.Helpers;
+﻿using Microsoft.Win32;
+using Petrroll.Helpers;
 using PowerSwitcher.TrayApp.Configuration;
 using PowerSwitcher.TrayApp.Services;
 using System;
@@ -7,6 +8,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace PowerSwitcher.TrayApp
 {
@@ -21,6 +23,7 @@ namespace PowerSwitcher.TrayApp
         public IPowerManager PowerManager { get; private set; }
         public TrayApp TrayApp { get; private set; }
         public ConfigurationInstance<PowerSwitcherSettings> Configuration { get; private set; }
+        public UpdateService Updates { get; private set; }
 
         private Mutex _mMutex;
         private void Application_Startup(object sender, StartupEventArgs e)
@@ -39,13 +42,27 @@ namespace PowerSwitcher.TrayApp
             HotKeyFailed = false;
 
             PowerManager = new PowerManager();
+            Updates = new UpdateService();
             MainWindow = new MainWindow();
-            TrayApp = new TrayApp(PowerManager, Configuration); //Has to be last because it hooks to MainWindow
+            TrayApp = new TrayApp(PowerManager, Configuration, Updates); //Has to be last because it hooks to MainWindow
 
             Configuration.Data.PropertyChanged += Configuration_PropertyChanged;
-            if (Configuration.Data.ShowOnShortcutSwitch) { registerHotkeyFromConfiguration(); }
+            ApplyHotkeyFromConfiguration();
 
             TrayApp.CreateAltMenu();
+            Updates.StartChecking();
+
+            SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
+        }
+
+        private void SystemEvents_UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            // Queued so that WPF has seen the same notification and refreshed its SystemParameters and SystemColors.
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                (MainWindow as MainWindow).RefreshThemeIfVisible();
+                TrayApp.UpdateTheme();
+            }));
         }
 
         private void migrateSettings()
@@ -63,24 +80,36 @@ namespace PowerSwitcher.TrayApp
         {
             if(e.PropertyName == nameof(PowerSwitcherSettings.ShowOnShortcutSwitch))
             {
-                if (Configuration.Data.ShowOnShortcutSwitch) { registerHotkeyFromConfiguration(); }
-                else { unregisterHotkeyFromConfiguration(); }
+                ApplyHotkeyFromConfiguration();
             }
         }
 
-        private void unregisterHotkeyFromConfiguration()
-        {
-            HotKeyManager.Unregister(new HotKey(Configuration.Data.ShowOnShortcutKey, Configuration.Data.ShowOnShortcutKeyModifier));
-        }
+        private HotKey registeredHotKey;
 
-        private bool registerHotkeyFromConfiguration()
+        /// <summary>
+        /// Makes the registered flyout shortcut match the configuration: drops the current one, then registers the
+        /// configured key if the shortcut is enabled. Returns false (and sets <see cref="HotKeyFailed"/>) when another
+        /// app already owns that key combination.
+        /// </summary>
+        public bool ApplyHotkeyFromConfiguration()
         {
+            if (registeredHotKey != null)
+            {
+                HotKeyManager.Unregister(registeredHotKey);
+                registeredHotKey = null;
+            }
+
+            HotKeyFailed = false;
+            if (!Configuration.Data.ShowOnShortcutSwitch) { return true; }
+
             var newHotKey = new HotKey(Configuration.Data.ShowOnShortcutKey, Configuration.Data.ShowOnShortcutKeyModifier);
+            bool registered;
+            try { registered = HotKeyManager.Register(newHotKey); }
+            catch (PowerSwitcher.Wrappers.PowerSwitcherWrappersException) { registered = false; } // e.g. a combination Windows reserves
+            if (!registered) { HotKeyFailed = true; return false; }
 
-            bool success = HotKeyManager.Register(newHotKey);
-            if(!success) { HotKeyFailed = true; return false; }
             newHotKey.HotKeyFired += (this.MainWindow as MainWindow).ToggleWindowVisibility;
-
+            registeredHotKey = newHotKey;
             return true;
         }
 
@@ -109,9 +138,11 @@ namespace PowerSwitcher.TrayApp
 
         private void App_OnExit(object sender, ExitEventArgs e)
         {
+            SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
             DisposeMutex();
             PowerManager?.Dispose();
             HotKeyManager?.Dispose();
+            Updates?.ApplyOnExit(); // A downloaded update the user didn't restart for is applied now.
         }
 
         ~App()

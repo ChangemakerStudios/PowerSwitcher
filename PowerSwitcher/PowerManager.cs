@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 
 
 namespace PowerSwitcher
@@ -26,6 +27,8 @@ namespace PowerSwitcher
     {
         Win32PowSchemasWrapper powerWraper;
         BatteryInfoWrapper batteryWrapper;
+        ActiveSchemeWatcher activeSchemeWatcher;
+        SynchronizationContext syncContext;
 
         public ObservableCollection<IPowerSchema> Schemas{ get; private set; }
         public IPowerSchema CurrentSchema { get; private set; }
@@ -41,6 +44,17 @@ namespace PowerSwitcher
 
             powerChangedEvent(batteryWrapper.GetCurrentChargingStatus());
             UpdateSchemas();
+
+            // Schemas is bound to UI, so updates triggered by the (thread pool) notification are marshalled back to the creating thread.
+            syncContext = SynchronizationContext.Current;
+            try { activeSchemeWatcher = new ActiveSchemeWatcher(activeSchemeChangedExternally); }
+            catch (PowerSwitcherWrappersException) { } // Without it, changes made outside the app are only picked up on the next refresh.
+        }
+
+        private void activeSchemeChangedExternally()
+        {
+            if (syncContext == null) { UpdateSchemas(); return; }
+            syncContext.Post(_ => { if (!disposedValue) { UpdateSchemas(); } }, null);
         }
 
         public void UpdateSchemas()
@@ -134,6 +148,7 @@ namespace PowerSwitcher
             if (disposing)
             {
                 batteryWrapper.Dispose();
+                activeSchemeWatcher?.Dispose();
             }
 
             disposedValue = true;

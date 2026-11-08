@@ -1,0 +1,105 @@
+<local:ThemedDialogWindow x:Class="PowerSwitcher.TrayApp.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PowerSwitcher.TrayApp"
+        Title="About PowerPlanSwitcher"
+        Icon="AppIcon.ico"
+        Width="440"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/PowerSwitcher.TrayApp;component/Themes/DialogResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <StackPanel Margin="24,24,24,20">
+
+        <!-- Header -->
+        <DockPanel>
+            <Border DockPanel.Dock="Left" Width="64" Height="64" CornerRadius="12" Background="{DynamicResource Accent}" VerticalAlignment="Top">
+                <Viewbox Margin="13">
+                    <Canvas Width="512" Height="512">
+                        <Path Data="{StaticResource PlugOutline}" Fill="{DynamicResource OnAccent}" />
+                        <Path Data="{StaticResource PlugBolt}" Fill="{DynamicResource OnAccent}" />
+                    </Canvas>
+                </Viewbox>
+            </Border>
+            <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+                <TextBlock x:Name="AppNameText" Text="PowerPlanSwitcher" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock x:Name="VersionText" Style="{StaticResource Secondary}" Text="Version 0.0.0" Margin="0,2,0,0" />
+                <TextBlock Style="{StaticResource Secondary}" Margin="0,6,0,0"
+                           Text="Switch Windows power plans from the tray, by hand or automatically when you plug in." />
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Live status -->
+        <Border Style="{StaticResource Card}" Margin="0,20,0,0" Padding="14,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition />
+                    <RowDefinition />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource Secondary}" Text="Active plan" Margin="0,2,20,2" />
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,2">
+                    <Ellipse x:Name="PlanDot" Width="10" Height="10" Margin="0,1,8,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="PlanText" Text="None" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource Secondary}" Text="Power source" Margin="0,2,20,2" />
+                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="PowerSourceText" Text="Plugged in" Margin="0,2" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource Secondary}" Text="Updates" Margin="0,2,20,2" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,2" TextWrapping="Wrap">
+                    <Run x:Name="UpdateText" Text="Up to date" />
+                    <Hyperlink x:Name="UpdateAction" Click="UpdateAction_Click"><Run x:Name="UpdateActionText" Text="Check now" /></Hyperlink>
+                </TextBlock>
+            </Grid>
+        </Border>
+
+        <!-- Credits -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Created by" />
+        <TextBlock TextWrapping="Wrap">
+            <Hyperlink x:Name="AuthorLink" NavigateUri="https://github.com/petrroll">Petr Houška</Hyperlink>
+            <Run Foreground="{DynamicResource TextSecondary}" Text=" · " />
+            <Hyperlink x:Name="ProjectLink">View on GitHub</Hyperlink>
+            <Run Foreground="{DynamicResource TextSecondary}" Text=" · " />
+            <Hyperlink x:Name="LicenceLink">MIT License</Hyperlink>
+        </TextBlock>
+
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Thanks to" />
+        <TextBlock TextWrapping="Wrap" LineHeight="21">
+            <Hyperlink x:Name="IconLink">Cursor Creative</Hyperlink><Run Foreground="{DynamicResource TextSecondary}" Text=" for the plug icon" />
+            <LineBreak />
+            <Hyperlink NavigateUri="https://github.com/File-New-Project/EarTrumpet">EarTrumpet</Hyperlink><Run Foreground="{DynamicResource TextSecondary}" Text=" for the flyout and interop help" />
+            <LineBreak />
+            <Hyperlink NavigateUri="https://github.com/andy722/power-plan-switcher">Andy Belsky's power-plan-switcher</Hyperlink><Run Foreground="{DynamicResource TextSecondary}" Text=" for interop inspiration" />
+            <LineBreak />
+            <Hyperlink NavigateUri="https://github.com/MahdiSafsafi/ImmersiveColors">Mahdi Safsafi's ImmersiveColors</Hyperlink><Run Foreground="{DynamicResource TextSecondary}" Text=" for accent colors" />
+        </TextBlock>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button x:Name="CopyButton" Style="{StaticResource DialogButton}" Content="Copy details" Click="CopyButton_Click"
+                    ToolTip="Copy version, .NET and Windows details for a bug report" />
+            <Button x:Name="OkButton" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Content="OK" IsDefault="True" Click="OkButton_Click" />
+        </StackPanel>
+    </StackPanel>
+</local:ThemedDialogWindow>

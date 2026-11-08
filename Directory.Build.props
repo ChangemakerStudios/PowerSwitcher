@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <Company>Changemaker Studios</Company>
+    <Product>PowerPlanSwitcher</Product>
+    <Description>Switch Windows power plans from the tray.</Description>
+    <Copyright>Copyright © 2016 - 2026 Petr Houška and contributors</Copyright>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- GitVersion supplies these in build.cake; plain `dotnet build` gets a recognisably local version. -->
+    <Version Condition="'$(Version)' == ''">0.5.0-local</Version>
+    <!-- No "+<commit sha>" suffix on InformationalVersion; GitVersion's own value already says what it needs to. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

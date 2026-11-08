@@ -1,0 +1,8 @@
+mode: ContinuousDelivery
+# No release tags exist yet; the last Store build was 0.4.4. Tag master (e.g. `0.5.0`) to take over from here.
+next-version: 0.5.0
+branches:
+  feature:
+    increment: Patch
+  develop:
+    increment: Patch

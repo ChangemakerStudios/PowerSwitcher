@@ -98,6 +98,12 @@ namespace PowerSwitcher.TrayApp
         #endregion
 
         #region ServicesUpdates
+        public void RefreshThemeIfVisible()
+        {
+            // A hidden window picks up the current theme the next time it's shown.
+            if (IsVisible) { UpdateTheme(); }
+        }
+
         private void UpdateTheme()
         {
             // Call UpdateTheme before UpdateWindowPosition in case sizes change with the theme.

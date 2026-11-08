@@ -1,0 +1,185 @@
+<local:ThemedDialogWindow x:Class="PowerSwitcher.TrayApp.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PowerSwitcher.TrayApp"
+        Title="PowerPlanSwitcher Settings"
+        Icon="AppIcon.ico"
+        Width="560"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/PowerSwitcher.TrayApp;component/Themes/DialogResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- A plan in a drop-down: its tray badge colour, then its name. -->
+            <DataTemplate x:Key="PlanTemplate">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="10" Height="10" Margin="0,1,8,0" VerticalAlignment="Center" Fill="{Binding Dot}" />
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </DataTemplate>
+
+            <Style x:Key="SettingTitle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+            </Style>
+            <Style x:Key="SettingDescription" TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Margin" Value="0,2,0,0" />
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <StackPanel Margin="24,20,24,20">
+
+        <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,4" />
+
+        <!-- ───────── Automatic switching ───────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Automatic switching" />
+
+        <Border Style="{StaticResource Card}">
+            <CheckBox x:Name="AutoSwitchToggle" Style="{StaticResource ToggleSwitch}"
+                      Checked="AutoSwitchToggle_Changed" Unchecked="AutoSwitchToggle_Changed">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SettingTitle}" Text="Switch plans when plugging in or unplugging" />
+                    <TextBlock Style="{StaticResource SettingDescription}" Text="Also applies the matching plan when the app starts." />
+                </StackPanel>
+            </CheckBox>
+        </Border>
+
+        <Border Style="{StaticResource Card}" x:Name="AutoPlansCard">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition />
+                    <RowDefinition Height="10" />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource SettingTitle}" Text="When plugged in" />
+                </StackPanel>
+                <ComboBox Grid.Row="0" Grid.Column="1" x:Name="OnAcPlanBox" Style="{StaticResource DropDown}" Width="220"
+                          Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
+                          SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="Plan when plugged in" />
+
+                <StackPanel Grid.Row="2" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource SettingTitle}" Text="On battery" />
+                </StackPanel>
+                <ComboBox Grid.Row="2" Grid.Column="1" x:Name="OffAcPlanBox" Style="{StaticResource DropDown}" Width="220"
+                          Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
+                          SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="Plan on battery" />
+            </Grid>
+        </Border>
+
+        <!-- ───────── Flyout ───────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Flyout" />
+
+        <Border Style="{StaticResource Card}">
+            <CheckBox x:Name="HideAfterClickToggle" Style="{StaticResource ToggleSwitch}"
+                      Checked="HideAfterClickToggle_Changed" Unchecked="HideAfterClickToggle_Changed">
+                <TextBlock Style="{StaticResource SettingTitle}" Text="Close the flyout after choosing a plan" />
+            </CheckBox>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <CheckBox x:Name="OnlyDefaultToggle" Style="{StaticResource ToggleSwitch}"
+                      Checked="OnlyDefaultToggle_Changed" Unchecked="OnlyDefaultToggle_Changed">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SettingTitle}" Text="Show only the built-in plans" />
+                    <TextBlock Style="{StaticResource SettingDescription}" Text="Power saver, Balanced and High performance. The active plan is always shown." />
+                </StackPanel>
+            </CheckBox>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <CheckBox x:Name="ShortcutToggle" Style="{StaticResource ToggleSwitch}"
+                          Checked="ShortcutToggle_Changed" Unchecked="ShortcutToggle_Changed">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SettingTitle}" Text="Keyboard shortcut" />
+                        <TextBlock Style="{StaticResource SettingDescription}" Text="Open the flyout from anywhere." />
+                    </StackPanel>
+                </CheckBox>
+
+                <StackPanel x:Name="ShortcutPicker" Orientation="Horizontal" Margin="0,12,0,0">
+                    <ComboBox x:Name="ModifierBox" Style="{StaticResource DropDown}" MinWidth="0" Width="170"
+                              DisplayMemberPath="Label" SelectionChanged="ShortcutBox_SelectionChanged"
+                              AutomationProperties.Name="Shortcut modifier keys" />
+                    <TextBlock Text="+" Margin="10,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
+                    <ComboBox x:Name="KeyBox" Style="{StaticResource DropDown}" MinWidth="0" Width="80"
+                              DisplayMemberPath="Label" SelectionChanged="ShortcutBox_SelectionChanged"
+                              AutomationProperties.Name="Shortcut key" />
+                </StackPanel>
+
+                <TextBlock x:Name="ShortcutError" Foreground="{DynamicResource Critical}" TextWrapping="Wrap"
+                           Margin="0,8,0,0" Visibility="Collapsed" />
+            </StackPanel>
+        </Border>
+
+        <!-- ───────── Tray icon ───────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Tray icon" />
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SettingTitle}" Text="Plan colors" />
+                <TextBlock Style="{StaticResource SettingDescription}" Text="The dot on the tray icon shows which plan is active." />
+
+                <ItemsControl x:Name="PlanColorList" Margin="0,8,0,0" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                                <ComboBox Grid.Column="1" Style="{StaticResource DropDown}" Width="220" MaxDropDownHeight="640"
+                                          ItemsSource="{Binding Options}" SelectedItem="{Binding Selected, Mode=OneTime}"
+                                          ItemTemplate="{StaticResource PlanTemplate}"
+                                          SelectionChanged="PlanColorBox_SelectionChanged"
+                                          AutomationProperties.Name="{Binding Name, StringFormat='Color for {0}'}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- ───────── Startup ───────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Startup" />
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <CheckBox x:Name="StartupToggle" Style="{StaticResource ToggleSwitch}"
+                          Checked="StartupToggle_Changed" Unchecked="StartupToggle_Changed">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SettingTitle}" Text="Start with Windows" />
+                        <TextBlock Style="{StaticResource SettingDescription}" Text="Put PowerPlanSwitcher in the tray when you sign in." />
+                    </StackPanel>
+                </CheckBox>
+                <TextBlock x:Name="StartupError" Foreground="{DynamicResource Critical}" TextWrapping="Wrap"
+                           Margin="0,8,0,0" Visibility="Collapsed" />
+            </StackPanel>
+        </Border>
+
+        <!-- Footer -->
+        <DockPanel Margin="0,20,0,0">
+            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Content="Close" IsDefault="True" Click="CloseButton_Click" />
+            <TextBlock Style="{StaticResource Secondary}" VerticalAlignment="Center" FontSize="12" Text="Changes are saved as you make them." />
+        </DockPanel>
+    </StackPanel>
+</local:ThemedDialogWindow>

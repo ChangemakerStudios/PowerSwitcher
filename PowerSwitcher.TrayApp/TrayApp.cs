@@ -1,7 +1,9 @@
 ﻿using Petrroll.Helpers;
 using PowerSwitcher.TrayApp.Configuration;
 using PowerSwitcher.TrayApp.Resources;
+using PowerSwitcher.TrayApp.Services;
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -20,21 +22,29 @@ namespace PowerSwitcher.TrayApp
         public event Action ShowFlyout;
         IPowerManager pwrManager;
         ConfigurationInstance<PowerSwitcherSettings> configuration;
+        UpdateService updates;
         #endregion
 
         #region Contructor
-        public TrayApp(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config)
+        public TrayApp(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config, UpdateService updateService)
         {
             this.pwrManager = powerManager;
             pwrManager.PropertyChanged += PwrManager_PropertyChanged;
 
             configuration = config;
+            configuration.Data.PropertyChanged += Settings_PropertyChanged;
+
+            updates = updateService;
+            updates.UpdateReady += Updates_UpdateReady;
+
+            // WPF doesn't do this for WinForms, and without it ToolStrip renderers ignore their colour table.
+            WF.Application.EnableVisualStyles();
 
             _trayIcon = new WF.NotifyIcon();
             _trayIcon.MouseClick += TrayIcon_MouseClick;
+            _trayIcon.BalloonTipClicked += (s, e) => About_Click(s, e);
 
-            _trayIcon.Icon = new System.Drawing.Icon(Application.GetResourceStream(new Uri("pack://application:,,,/PowerSwitcher.TrayApp;component/Tray.ico")).Stream, WF.SystemInformation.SmallIconSize);
-            _trayIcon.Text = string.Concat(AppStrings.AppName);
+            UpdateTheme();
             _trayIcon.Visible = true;
 
             this.ShowFlyout += (((App)Application.Current).MainWindow as MainWindow).ToggleWindowVisibility;
@@ -45,47 +55,92 @@ namespace PowerSwitcher.TrayApp
 
         public void CreateAltMenu()
         {
-            var contextMenuRoot = new WF.ContextMenu();
-            contextMenuRoot.Popup += ContextMenu_Popup;
+            var contextMenuRoot = new WF.ContextMenuStrip();
+            contextMenuRoot.Opening += ContextMenu_Opening;
+            contextMenuRoot.Renderer = TrayMenuRenderer.Create(ThemeService.IsHighContrast, ThemeService.IsLightTheme);
 
-            _trayIcon.ContextMenu = contextMenuRoot;
+            _trayIcon.ContextMenuStrip = contextMenuRoot;
 
-            var contextMenuRootItems = contextMenuRoot.MenuItems;
-            contextMenuRootItems.Add("-");
+            var contextMenuRootItems = contextMenuRoot.Items;
+            contextMenuRootItems.Add(new WF.ToolStripSeparator());
 
-            var contextMenuSettings = contextMenuRootItems.Add(AppStrings.Settings);
-            contextMenuSettings.Name = "settings";
+            // Shown once an update has downloaded; see Updates_UpdateReady.
+            var updateItem = addMenuItem(contextMenuRootItems, "");
+            updateItem.Name = "update";
+            updateItem.Font = new System.Drawing.Font(updateItem.Font, System.Drawing.FontStyle.Bold);
+            updateItem.Click += (s, e) => RestartToUpdate();
+            updateItem.Visible = false;
 
-            var settingsOnACItem = contextMenuSettings.MenuItems.Add(AppStrings.SchemaToSwitchOnAc);
-            settingsOnACItem.Name = "settingsOnAC";
+            var settingsItem = addMenuItem(contextMenuRootItems, $"{AppStrings.Settings}…");
+            settingsItem.Name = "settings";
+            settingsItem.Click += Settings_Click;
 
-            var settingsOffACItem = contextMenuSettings.MenuItems.Add(AppStrings.SchemaToSwitchOffAc);
-            settingsOffACItem.Name = "settingsOffAC";
-
-            var automaticSwitchItem = contextMenuSettings.MenuItems.Add(AppStrings.AutomaticOnOffACSwitch);
-            automaticSwitchItem.Checked = configuration.Data.AutomaticOnACSwitch;
-            automaticSwitchItem.Click += AutomaticSwitchItem_Click;
-
-            var automaticHideItem = contextMenuSettings.MenuItems.Add(AppStrings.HideFlyoutAfterSchemaChangeSwitch);
-            automaticHideItem.Checked = configuration.Data.AutomaticFlyoutHideAfterClick;
-            automaticHideItem.Click += AutomaticHideItem_Click;
-
-            var onlyDefaultSchemasItem = contextMenuSettings.MenuItems.Add(AppStrings.ShowOnlyDefaultSchemas);
-            onlyDefaultSchemasItem.Checked = configuration.Data.ShowOnlyDefaultSchemas;
-            onlyDefaultSchemasItem.Click += OnlyDefaultSchemas_Click;
-
-            var enableShortcutsToggleItem = contextMenuSettings.MenuItems.Add($"{AppStrings.ToggleOnShowrtcutSwitch} ({configuration.Data.ShowOnShortcutKeyModifier} + {configuration.Data.ShowOnShortcutKey})");
-            enableShortcutsToggleItem.Enabled = !(Application.Current as App).HotKeyFailed;
-            enableShortcutsToggleItem.Checked = configuration.Data.ShowOnShortcutSwitch;
-            enableShortcutsToggleItem.Click += EnableShortcutsToggleItem_Click;
-
-            var aboutItem = contextMenuRootItems.Add($"{AppStrings.About} ({Assembly.GetEntryAssembly().GetName().Version})");
+            var aboutItem = addMenuItem(contextMenuRootItems, $"{AppStrings.About}…");
             aboutItem.Click += About_Click;
 
-            var exitItem = contextMenuRootItems.Add(AppStrings.Exit);
+            var exitItem = addMenuItem(contextMenuRootItems, AppStrings.Exit);
             exitItem.Click += Exit_Click;
         }
 
+        private static WF.ToolStripMenuItem addMenuItem(WF.ToolStripItemCollection items, string text)
+        {
+            var item = new WF.ToolStripMenuItem(text);
+            items.Add(item);
+            return item;
+        }
+
+        #endregion
+
+        #region ThemeRelated
+        private bool? appliedLightTheme;
+        private bool? appliedHighContrast;
+
+        public void UpdateTheme()
+        {
+            var isLight = ThemeService.IsLightTheme;
+            var isHighContrast = ThemeService.IsHighContrast;
+
+            if (_trayIcon.ContextMenuStrip != null && (isLight != appliedLightTheme || isHighContrast != appliedHighContrast))
+            {
+                _trayIcon.ContextMenuStrip.Renderer = TrayMenuRenderer.Create(isHighContrast, isLight);
+            }
+
+            appliedLightTheme = isLight;
+            appliedHighContrast = isHighContrast;
+
+            refreshTrayIcon();
+        }
+
+        private System.Drawing.Color? iconBadgeColor;
+        private bool? iconLightTheme;
+        private System.Drawing.Size? iconSize;
+
+        /// <summary>Re-renders the tray icon and tooltip for the active plan; cheap no-op when nothing changed.</summary>
+        private void refreshTrayIcon()
+        {
+            var schema = pwrManager.CurrentSchema;
+            _trayIcon.Text = trayTooltip(schema);
+
+            var badgeColor = TrayIconFactory.BadgeColorFor(schema?.Guid, schema?.Name, configuration.Data);
+            var isLight = appliedLightTheme ?? ThemeService.IsLightTheme;
+            var size = WF.SystemInformation.SmallIconSize;
+            if (_trayIcon.Icon != null && badgeColor == iconBadgeColor && isLight == iconLightTheme && size == iconSize) { return; }
+
+            var previousIcon = _trayIcon.Icon;
+            _trayIcon.Icon = TrayIconFactory.Create(badgeColor, isLight, size);
+            previousIcon?.Dispose();
+
+            iconBadgeColor = badgeColor;
+            iconLightTheme = isLight;
+            iconSize = size;
+        }
+
+        private static string trayTooltip(IPowerSchema schema)
+        {
+            var text = schema == null ? AppStrings.AppName : $"{AppStrings.AppName}: {schema.Name}";
+            const int maxTooltipLength = 127; // NotifyIcon.Text throws above this.
+            return text.Length <= maxTooltipLength ? text : text.Substring(0, maxTooltipLength);
+        }
         #endregion
 
         #region FlyoutRelated
@@ -99,57 +154,27 @@ namespace PowerSwitcher.TrayApp
 
         #endregion
 
-        #region SettingsTogglesRegion
-        private void EnableShortcutsToggleItem_Click(object sender, EventArgs e)
-        {
-            WF.MenuItem enableShortcutsToggleItem = (WF.MenuItem)sender;
-
-            configuration.Data.ShowOnShortcutSwitch = !configuration.Data.ShowOnShortcutSwitch;
-            enableShortcutsToggleItem.Checked = configuration.Data.ShowOnShortcutSwitch;
-            enableShortcutsToggleItem.Enabled = !(Application.Current as App).HotKeyFailed;
-
-            configuration.Save();
-        }
-
-        private void AutomaticHideItem_Click(object sender, EventArgs e)
-        {
-            WF.MenuItem automaticHideItem = (WF.MenuItem)sender;
-
-            configuration.Data.AutomaticFlyoutHideAfterClick = !configuration.Data.AutomaticFlyoutHideAfterClick;
-            automaticHideItem.Checked = configuration.Data.AutomaticFlyoutHideAfterClick;
-
-            configuration.Save();
-        }
-
-        private void OnlyDefaultSchemas_Click(object sender, EventArgs e)
-        {
-            WF.MenuItem onlyDefaultSchemasItem = (WF.MenuItem)sender;
-
-            configuration.Data.ShowOnlyDefaultSchemas = !configuration.Data.ShowOnlyDefaultSchemas;
-            onlyDefaultSchemasItem.Checked = configuration.Data.ShowOnlyDefaultSchemas;
-
-            configuration.Save();
-        }
-
-        private void AutomaticSwitchItem_Click(object sender, EventArgs e)
-        {
-            WF.MenuItem automaticSwitchItem = (WF.MenuItem)sender;
-
-            configuration.Data.AutomaticOnACSwitch = !configuration.Data.AutomaticOnACSwitch;
-            automaticSwitchItem.Checked = configuration.Data.AutomaticOnACSwitch;
-
-            if (configuration.Data.AutomaticOnACSwitch) { powerStatusChanged(); }
-
-            configuration.Save();
-        }
-
-        #endregion
-
         #region AutomaticOnACSwitchRelated
+
+        private void Settings_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            // Turning the rule on, or changing a plan it uses, takes effect immediately rather than at the next plug/unplug.
+            if (e.PropertyName == nameof(PowerSwitcherSettings.AutomaticOnACSwitch) ||
+                e.PropertyName == nameof(PowerSwitcherSettings.AutomaticPlanGuidOnAC) ||
+                e.PropertyName == nameof(PowerSwitcherSettings.AutomaticPlanGuidOffAC))
+            {
+                powerStatusChanged();
+            }
+            else if (e.PropertyName == nameof(PowerSwitcherSettings.PlanColors))
+            {
+                refreshTrayIcon();
+            }
+        }
 
         private void PwrManager_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(IPowerManager.CurrentPowerStatus)) { powerStatusChanged(); }
+            if (e.PropertyName == nameof(IPowerManager.CurrentSchema)) { refreshTrayIcon(); }
         }
 
         private void powerStatusChanged()
@@ -181,7 +206,7 @@ namespace PowerSwitcher.TrayApp
 
         #region ContextMenuItemRelatedStuff
 
-        private void ContextMenu_Popup(object sender, EventArgs e)
+        private void ContextMenu_Opening(object sender, CancelEventArgs e)
         {
             clearPowerSchemasInTray();
 
@@ -199,42 +224,25 @@ namespace PowerSwitcher.TrayApp
                 (s, ea) => switchToPowerSchema(powerSchema),
                 powerSchema.IsActive
                 );
-            _trayIcon.ContextMenu.MenuItems.Add(0, newItemMain);
-
-            var newItemSettingsOffAC = getNewPowerSchemaItem(
-                powerSchema,
-                (s, ea) => setPowerSchemaAsOffAC(powerSchema),
-                (powerSchema.Guid == configuration.Data.AutomaticPlanGuidOffAC)
-                );
-            _trayIcon.ContextMenu.MenuItems["settings"].MenuItems["settingsOffAC"].MenuItems.Add(0, newItemSettingsOffAC);
-
-            var newItemSettingsOnAC = getNewPowerSchemaItem(
-                powerSchema,
-                (s, ea) => setPowerSchemaAsOnAC(powerSchema),
-                (powerSchema.Guid == configuration.Data.AutomaticPlanGuidOnAC)
-                );
-
-            _trayIcon.ContextMenu.MenuItems["settings"].MenuItems["settingsOnAC"].MenuItems.Add(0, newItemSettingsOnAC);
+            _trayIcon.ContextMenuStrip.Items.Insert(0, newItemMain);
         }
 
         private void clearPowerSchemasInTray()
         {
-            for (int i = _trayIcon.ContextMenu.MenuItems.Count - 1; i >= 0; i--)
+            var rootItems = _trayIcon.ContextMenuStrip.Items;
+            for (int i = rootItems.Count - 1; i >= 0; i--)
             {
-                var item = _trayIcon.ContextMenu.MenuItems[i];
+                var item = rootItems[i];
                 if (item.Name.StartsWith("pwrScheme", StringComparison.Ordinal))
                 {
-                    _trayIcon.ContextMenu.MenuItems.Remove(item);
+                    item.Dispose();
                 }
             }
-
-            _trayIcon.ContextMenu.MenuItems["settings"].MenuItems["settingsOffAC"].MenuItems.Clear();
-            _trayIcon.ContextMenu.MenuItems["settings"].MenuItems["settingsOnAC"].MenuItems.Clear();
         }
 
-        private WF.MenuItem getNewPowerSchemaItem(IPowerSchema powerSchema, EventHandler clickedHandler, bool isChecked)
+        private WF.ToolStripMenuItem getNewPowerSchemaItem(IPowerSchema powerSchema, EventHandler clickedHandler, bool isChecked)
         {
-            var newItemMain = new WF.MenuItem(powerSchema.Name);
+            var newItemMain = new WF.ToolStripMenuItem(powerSchema.Name);
             newItemMain.Name = $"pwrScheme{powerSchema.Guid}";
             newItemMain.Checked = isChecked;
             newItemMain.Click += clickedHandler;
@@ -245,18 +253,6 @@ namespace PowerSwitcher.TrayApp
         #endregion
 
         #region OnSchemaClickMethods
-        private void setPowerSchemaAsOffAC(IPowerSchema powerSchema)
-        {
-            configuration.Data.AutomaticPlanGuidOffAC = powerSchema.Guid;
-            configuration.Save();
-        }
-
-        private void setPowerSchemaAsOnAC(IPowerSchema powerSchema)
-        {
-            configuration.Data.AutomaticPlanGuidOnAC = powerSchema.Guid;
-            configuration.Save();
-        }
-
         private void switchToPowerSchema(IPowerSchema powerSchema)
         {
             pwrManager.SetPowerSchema(powerSchema);
@@ -265,14 +261,59 @@ namespace PowerSwitcher.TrayApp
 
         #region OtherItemsClicked
 
-        void About_Click(object sender, EventArgs e)
+        #region Updates
+
+        private void Updates_UpdateReady()
         {
-            Process.Start(AppStrings.AboutAppURL);
+            var updateItem = _trayIcon.ContextMenuStrip?.Items["update"];
+            if (updateItem != null)
+            {
+                updateItem.Text = $"Restart to update to {updates.PendingVersion}";
+                updateItem.Visible = true;
+            }
+
+            _trayIcon.ShowBalloonTip(10000, $"{AppStrings.AppName} {updates.PendingVersion} is ready",
+                "Restart from the tray menu to update, or it'll be applied the next time the app closes.", WF.ToolTipIcon.Info);
         }
 
-        private void IconLicenceItem_Click(object sender, EventArgs e)
+        /// <summary>Restarts into a downloaded update.</summary>
+        public void RestartToUpdate()
         {
-            Process.Start(AppStrings.IconLicenceURL);
+            if (updates.State != UpdateState.Ready) { return; }
+
+            // Velopack ends the process without WPF's Exit, so don't leave a ghost icon in the tray.
+            _trayIcon.Visible = false;
+            updates.ApplyAndRestart();
+        }
+
+        #endregion
+
+        private AboutWindow aboutWindow;
+        private SettingsWindow settingsWindow;
+
+        void About_Click(object sender, EventArgs e)
+        {
+            showSingleWindow(ref aboutWindow, () => new AboutWindow(pwrManager, updates, RestartToUpdate), w => aboutWindow = null);
+        }
+
+        void Settings_Click(object sender, EventArgs e)
+        {
+            showSingleWindow(ref settingsWindow, () => new SettingsWindow(pwrManager, configuration), w => settingsWindow = null);
+        }
+
+        /// <summary>Shows the window, creating it only if it isn't already open; a second click brings it to the front.</summary>
+        private static void showSingleWindow<T>(ref T window, Func<T> create, Action<T> onClosed) where T : Window
+        {
+            if (window == null)
+            {
+                var created = create();
+                created.Closed += (s, ea) => onClosed(created);
+                created.Show();
+                window = created;
+            }
+
+            if (window.WindowState == WindowState.Minimized) { window.WindowState = WindowState.Normal; }
+            window.Activate();
         }
 
 
