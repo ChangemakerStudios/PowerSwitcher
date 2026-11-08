@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <Configurations>Debug;Release;ReleaseAndPackage</Configurations>
+    <!-- Assembly attributes, including the app version, live in each project's Properties\AssemblyInfo.cs. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'ReleaseAndPackage'">
+    <Optimize>true</Optimize>
+    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
+  </PropertyGroup>
+</Project>

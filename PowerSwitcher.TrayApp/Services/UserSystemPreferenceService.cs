@@ -18,6 +18,21 @@ namespace PowerSwitcher.TrayApp.Services
             }
         }
 
+        /// <summary>
+        /// The "Windows mode" setting, which is what the taskbar and shell flyouts follow.
+        /// The value doesn't exist before Windows 10 1903, where the shell is always dark.
+        /// </summary>
+        public static bool IsSystemLightTheme
+        {
+            get
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry64))
+                {
+                    return (int)baseKey.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize").GetValue("SystemUsesLightTheme", 0) > 0;
+                }
+            }
+        }
+
         public static bool UseAccentColor
         {
             get

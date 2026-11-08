@@ -1,4 +1,5 @@
-﻿using Petrroll.Helpers;
+﻿using Microsoft.Win32;
+using Petrroll.Helpers;
 using PowerSwitcher.TrayApp.Configuration;
 using PowerSwitcher.TrayApp.Services;
 using System;
@@ -7,6 +8,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace PowerSwitcher.TrayApp
 {
@@ -46,6 +48,18 @@ namespace PowerSwitcher.TrayApp
             if (Configuration.Data.ShowOnShortcutSwitch) { registerHotkeyFromConfiguration(); }
 
             TrayApp.CreateAltMenu();
+
+            SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
+        }
+
+        private void SystemEvents_UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            // Queued so that WPF has seen the same notification and refreshed its SystemParameters and SystemColors.
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                (MainWindow as MainWindow).RefreshThemeIfVisible();
+                TrayApp.UpdateTheme();
+            }));
         }
 
         private void migrateSettings()
@@ -109,6 +123,7 @@ namespace PowerSwitcher.TrayApp
 
         private void App_OnExit(object sender, ExitEventArgs e)
         {
+            SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
             DisposeMutex();
             PowerManager?.Dispose();
             HotKeyManager?.Dispose();

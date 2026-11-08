@@ -1,4 +1,5 @@
 #16x16 has to be done manually
+#TrayLightTheme.ico (tray icon for light taskbars) is the frames of Tray.ico up to 64x64 with every pixel's colour set to black, keeping alpha
 sizesNoAA="20 32"
 sizesAA="40 44 46 50 64 128 150 256 512"
 names=""
