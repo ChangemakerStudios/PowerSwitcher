@@ -11,5 +11,24 @@ namespace PowerSwitcher
 
         // Hidden by default; `powercfg -duplicatescheme` gives the copy a new GUID, so a copy counts as a custom plan.
         public static readonly Guid UltimatePerformance = new Guid("e9a42b02-d5df-448d-aa00-03f14749eb61");
+
+        /// <summary>
+        /// Whether a plan is Power saver, Balanced or High performance. Copies get a new GUID but keep the built-in
+        /// name, and some PCs only have copies, so these are also matched by their (English) name.
+        /// </summary>
+        public static bool IsStandardPlan(Guid guid, string name)
+        {
+            if (guid == PowerSaver || guid == Balanced || guid == HighPerformance) { return true; }
+
+            switch (name?.Trim().ToLowerInvariant())
+            {
+                case "power saver":
+                case "balanced":
+                case "high performance":
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 }

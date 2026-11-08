@@ -3,7 +3,6 @@ using PowerSwitcher.TrayApp.Configuration;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Linq;
 
 namespace PowerSwitcher.TrayApp.ViewModels
 {
@@ -32,7 +31,7 @@ namespace PowerSwitcher.TrayApp.ViewModels
 
             Schemas = pwrManager.Schemas.WhereObservableSwitchable<ObservableCollection<IPowerSchema>, IPowerSchema>
                 (
-                sch => defaultGuids.Contains(sch.Guid) || sch.IsActive,
+                sch => WellKnownSchemas.IsStandardPlan(sch.Guid, sch.Name) || sch.IsActive,
                 config.Data.ShowOnlyDefaultSchemas
                 );
         }
@@ -55,8 +54,6 @@ namespace PowerSwitcher.TrayApp.ViewModels
         {
             if (e.PropertyName == nameof(IPowerManager.CurrentSchema)) { RaisePropertyChangedEvent(nameof(ActiveSchema)); }
         }
-
-        private Guid[] defaultGuids = { WellKnownSchemas.HighPerformance, WellKnownSchemas.Balanced, WellKnownSchemas.PowerSaver };
 
         public void SetGuidAsActive(Guid guid)
         {
