@@ -1,4 +1,4 @@
-using Petrroll.Helpers;
+﻿using Petrroll.Helpers;
 using PowerSwitcher.TrayApp.Configuration;
 using PowerSwitcher.TrayApp.Services;
 using System;
@@ -22,11 +22,62 @@ namespace PowerSwitcher.TrayApp
             public string Name { get; }
             public Brush Dot { get; }
 
-            public PlanOption(IPowerSchema schema)
+            public PlanOption(IPowerSchema schema, PowerSwitcherSettings settings)
             {
                 Guid = schema.Guid;
                 Name = schema.Name;
-                Dot = TrayIconFactory.BadgeBrushFor(schema.Guid, schema.Name);
+                Dot = TrayIconFactory.BadgeBrushFor(schema.Guid, schema.Name, settings);
+            }
+        }
+
+        /// <summary>One entry in a plan's color drop-down.</summary>
+        public sealed class ColorOption
+        {
+            public string Name { get; }
+            public Brush Dot { get; }
+            /// <summary>"#RRGGBB"; null for the "Choose a color…" entry.</summary>
+            public string Hex { get; }
+            /// <summary>The "Choose a color…" entry, which opens the color dialog instead of being a color itself.</summary>
+            public bool OpensPicker => Hex == null;
+
+            public ColorOption(string name, System.Drawing.Color? color)
+            {
+                Name = name;
+                Dot = color == null ? null : TrayIconFactory.ToBrush(color.Value);
+                Hex = color == null ? null : TrayIconFactory.ToHex(color.Value);
+            }
+        }
+
+        /// <summary>A plan and the colors it can have; the row's drop-down binds to this.</summary>
+        public sealed class PlanColorRow
+        {
+            public Guid Guid { get; }
+            public string Name { get; }
+            public System.Drawing.Color CurrentColor { get; }
+            /// <summary>The plan's own color; choosing it clears the saved choice rather than storing a copy.</summary>
+            public string DefaultHex { get; }
+            public List<ColorOption> Options { get; }
+            public ColorOption Selected { get; }
+
+            public PlanColorRow(IPowerSchema schema, PowerSwitcherSettings settings)
+            {
+                Guid = schema.Guid;
+                Name = schema.Name;
+                DefaultHex = TrayIconFactory.ToHex(TrayIconFactory.DefaultBadgeColorFor(schema.Guid, schema.Name));
+                CurrentColor = TrayIconFactory.BadgeColorFor(schema.Guid, schema.Name, settings).Value;
+
+                // Every default is a palette color, so the drop-down always shows the color by name.
+                Options = TrayIconFactory.Palette.Select(p => new ColorOption(p.Name, p.Color)).ToList();
+
+                var currentHex = TrayIconFactory.ToHex(CurrentColor);
+                Selected = Options.FirstOrDefault(o => string.Equals(o.Hex, currentHex, StringComparison.OrdinalIgnoreCase));
+                if (Selected == null)
+                {
+                    Selected = new ColorOption($"Custom ({currentHex})", CurrentColor);
+                    Options.Add(Selected);
+                }
+
+                Options.Add(new ColorOption("Choose a color…", null));
             }
         }
 
@@ -63,6 +114,7 @@ namespace PowerSwitcher.TrayApp
 
             pwrManager.UpdateSchemas();
             loadPlans();
+            loadPlanColors();
             loadShortcutChoices();
 
             loading = false;
@@ -85,7 +137,7 @@ namespace PowerSwitcher.TrayApp
             var wasLoading = loading;
             loading = true;
 
-            var options = pwrManager.Schemas.Select(sch => new PlanOption(sch)).ToList();
+            var options = pwrManager.Schemas.Select(sch => new PlanOption(sch, configuration.Data)).ToList();
             OnAcPlanBox.ItemsSource = options;
             OffAcPlanBox.ItemsSource = options;
             OnAcPlanBox.SelectedItem = options.FirstOrDefault(o => o.Guid == configuration.Data.AutomaticPlanGuidOnAC);
@@ -95,7 +147,11 @@ namespace PowerSwitcher.TrayApp
         }
 
         // Plans added or removed (e.g. in Control Panel) while the window is open.
-        private void Schemas_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e) => loadPlans();
+        private void Schemas_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            loadPlans();
+            loadPlanColors();
+        }
 
         private void AutoSwitchToggle_Changed(object sender, RoutedEventArgs e)
         {
@@ -132,6 +188,50 @@ namespace PowerSwitcher.TrayApp
             if (loading) { return; }
             configuration.Data.ShowOnlyDefaultSchemas = OnlyDefaultToggle.IsChecked == true;
             configuration.Save();
+        }
+
+        #endregion
+
+        #region Tray icon
+
+        private void loadPlanColors() =>
+            PlanColorList.ItemsSource = pwrManager.Schemas.Select(sch => new PlanColorRow(sch, configuration.Data)).ToList();
+
+        private void PlanColorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var box = (ComboBox)sender;
+            if (!(box.DataContext is PlanColorRow row) || !(box.SelectedItem is ColorOption option)) { return; }
+            if (option == row.Selected) { return; } // The initial selection being applied, not a change.
+
+            string hex = option.Hex;
+            if (option.OpensPicker)
+            {
+                hex = pickColor(row.CurrentColor);
+                if (hex == null) { box.SelectedItem = row.Selected; return; } // Cancelled: put the old choice back.
+            }
+
+            if (string.Equals(hex, row.DefaultHex, StringComparison.OrdinalIgnoreCase)) { hex = null; } // Back to the default.
+            configuration.Data.SetPlanColor(row.Guid, hex); // TrayApp redraws the icon on this change.
+            configuration.Save();
+
+            // Rebuild after this event finishes: the rows (and the auto-switch pickers' dots) now show the new color.
+            Dispatcher.BeginInvoke(new Action(() => { loadPlanColors(); loadPlans(); }));
+        }
+
+        /// <summary>The Windows color dialog, starting at <paramref name="current"/>. Returns "#RRGGBB", or null if cancelled.</summary>
+        private string pickColor(System.Drawing.Color current)
+        {
+            using (var dialog = new System.Windows.Forms.ColorDialog { Color = current, FullOpen = true, AnyColor = true })
+            {
+                var owner = new Win32Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+                return dialog.ShowDialog(owner) == System.Windows.Forms.DialogResult.OK ? TrayIconFactory.ToHex(dialog.Color) : null;
+            }
+        }
+
+        private sealed class Win32Owner : System.Windows.Forms.IWin32Window
+        {
+            public Win32Owner(IntPtr handle) { Handle = handle; }
+            public IntPtr Handle { get; }
         }
 
         #endregion

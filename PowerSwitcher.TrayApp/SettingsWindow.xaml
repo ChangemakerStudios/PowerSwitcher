@@ -130,6 +130,35 @@
             </StackPanel>
         </Border>
 
+        <!-- ───────── Tray icon ───────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Tray icon" />
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SettingTitle}" Text="Plan colors" />
+                <TextBlock Style="{StaticResource SettingDescription}" Text="The dot on the tray icon shows which plan is active." />
+
+                <ItemsControl x:Name="PlanColorList" Margin="0,8,0,0" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                                <ComboBox Grid.Column="1" Style="{StaticResource DropDown}" Width="220" MaxDropDownHeight="640"
+                                          ItemsSource="{Binding Options}" SelectedItem="{Binding Selected, Mode=OneTime}"
+                                          ItemTemplate="{StaticResource PlanTemplate}"
+                                          SelectionChanged="PlanColorBox_SelectionChanged"
+                                          AutomationProperties.Name="{Binding Name, StringFormat='Color for {0}'}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- ───────── Startup ───────── -->
         <TextBlock Style="{StaticResource SectionHeader}" Text="Startup" />
 

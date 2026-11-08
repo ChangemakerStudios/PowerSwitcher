@@ -111,8 +111,7 @@ namespace PowerSwitcher.TrayApp
             refreshTrayIcon();
         }
 
-        private Guid? iconSchemaGuid;
-        private string iconSchemaName;
+        private System.Drawing.Color? iconBadgeColor;
         private bool? iconLightTheme;
         private System.Drawing.Size? iconSize;
 
@@ -122,18 +121,16 @@ namespace PowerSwitcher.TrayApp
             var schema = pwrManager.CurrentSchema;
             _trayIcon.Text = trayTooltip(schema);
 
-            var schemaGuid = schema?.Guid;
-            var schemaName = schema?.Name;
+            var badgeColor = TrayIconFactory.BadgeColorFor(schema?.Guid, schema?.Name, configuration.Data);
             var isLight = appliedLightTheme ?? ThemeService.IsLightTheme;
             var size = WF.SystemInformation.SmallIconSize;
-            if (_trayIcon.Icon != null && schemaGuid == iconSchemaGuid && schemaName == iconSchemaName && isLight == iconLightTheme && size == iconSize) { return; }
+            if (_trayIcon.Icon != null && badgeColor == iconBadgeColor && isLight == iconLightTheme && size == iconSize) { return; }
 
             var previousIcon = _trayIcon.Icon;
-            _trayIcon.Icon = TrayIconFactory.Create(schemaGuid, schemaName, isLight, size);
+            _trayIcon.Icon = TrayIconFactory.Create(badgeColor, isLight, size);
             previousIcon?.Dispose();
 
-            iconSchemaGuid = schemaGuid;
-            iconSchemaName = schemaName;
+            iconBadgeColor = badgeColor;
             iconLightTheme = isLight;
             iconSize = size;
         }
@@ -167,6 +164,10 @@ namespace PowerSwitcher.TrayApp
                 e.PropertyName == nameof(PowerSwitcherSettings.AutomaticPlanGuidOffAC))
             {
                 powerStatusChanged();
+            }
+            else if (e.PropertyName == nameof(PowerSwitcherSettings.PlanColors))
+            {
+                refreshTrayIcon();
             }
         }
 

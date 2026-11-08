@@ -3,7 +3,7 @@ PowerPlanSwitcher is a simple app that allows you to quickly switch between powe
 
 Features:
 - Windows-styled flyout that allows quick power plan schemas changing
-- Tray icon shows the active plan at a glance (a coloured dot per plan)
+- Tray icon shows the active plan at a glance (a coloured dot per plan; pick each plan's colour in Settings)
 - Follows the Windows light, dark and high-contrast themes
 - Ability to limit flyout only to Windows default power plan schemas
 - Automatic schema switching when AC adapter gets connected / disconnected

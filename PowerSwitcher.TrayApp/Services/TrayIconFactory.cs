@@ -1,5 +1,8 @@
+﻿using PowerSwitcher.TrayApp.Configuration;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using WpfApplication = System.Windows.Application;
 
@@ -11,26 +14,47 @@ namespace PowerSwitcher.TrayApp.Services
     /// </summary>
     public static class TrayIconFactory
     {
+        // Defaults run cool to hot, low power to full power: green, blue, orange, red.
         static readonly Color PowerSaverColor = Color.FromArgb(0x22, 0xB1, 0x4C);
         static readonly Color BalancedColor = Color.FromArgb(0x2F, 0x8F, 0xED);
         static readonly Color HighPerformanceColor = Color.FromArgb(0xF7, 0x90, 0x1E);
         static readonly Color UltimatePerformanceColor = Color.FromArgb(0xE8, 0x45, 0x3C);
 
+        static readonly Color PurpleColor = Color.FromArgb(0xA6, 0x66, 0xE8);
+        static readonly Color TealColor = Color.FromArgb(0x17, 0xB2, 0xA6);
+        static readonly Color PinkColor = Color.FromArgb(0xE8, 0x55, 0x9C);
+        static readonly Color GoldColor = Color.FromArgb(0xD9, 0xA4, 0x00);
+
         // Custom/OEM plans; picked by GUID so a plan keeps its colour across restarts.
-        static readonly Color[] CustomPlanColors =
+        static readonly Color[] CustomPlanColors = { PurpleColor, TealColor, PinkColor, GoldColor };
+
+        /// <summary>The colours offered in Settings. All are bright enough to read on both light and dark taskbars.</summary>
+        public static IReadOnlyList<(string Name, Color Color)> Palette { get; } = new[]
         {
-            Color.FromArgb(0xA6, 0x66, 0xE8), // purple
-            Color.FromArgb(0x17, 0xB2, 0xA6), // teal
-            Color.FromArgb(0xE8, 0x55, 0x9C), // pink
-            Color.FromArgb(0xD9, 0xA4, 0x00), // gold
+            ("Green", PowerSaverColor),
+            ("Teal", TealColor),
+            ("Blue", BalancedColor),
+            ("Purple", PurpleColor),
+            ("Pink", PinkColor),
+            ("Red", UltimatePerformanceColor),
+            ("Orange", HighPerformanceColor),
+            ("Gold", GoldColor),
+            ("Gray", Color.FromArgb(0x8A, 0x8A, 0x8A)),
         };
 
-        /// <summary>Badge colour for a plan, or null when no plan is active (plain plug).</summary>
-        public static Color? BadgeColorFor(Guid? schemaGuid, string schemaName)
+        /// <summary>
+        /// Badge colour for a plan: the one picked in Settings, else its default. Null when no plan is active (plain plug).
+        /// </summary>
+        public static Color? BadgeColorFor(Guid? schemaGuid, string schemaName, PowerSwitcherSettings settings)
         {
             if (schemaGuid == null || schemaGuid == Guid.Empty) { return null; }
+            if (TryParseColor(settings?.GetPlanColor(schemaGuid.Value), out var picked)) { return picked; }
+            return DefaultBadgeColorFor(schemaGuid.Value, schemaName);
+        }
 
-            var guid = schemaGuid.Value;
+        /// <summary>The colour a plan gets when none has been picked for it.</summary>
+        public static Color DefaultBadgeColorFor(Guid guid, string schemaName)
+        {
             if (guid == WellKnownSchemas.PowerSaver) { return PowerSaverColor; }
             if (guid == WellKnownSchemas.Balanced) { return BalancedColor; }
             if (guid == WellKnownSchemas.HighPerformance) { return HighPerformanceColor; }
@@ -51,19 +75,37 @@ namespace PowerSwitcher.TrayApp.Services
         }
 
         /// <summary>The badge colour as a WPF brush, for showing the same dot in windows; null when there's no badge.</summary>
-        public static System.Windows.Media.Brush BadgeBrushFor(Guid? schemaGuid, string schemaName)
+        public static System.Windows.Media.Brush BadgeBrushFor(Guid? schemaGuid, string schemaName, PowerSwitcherSettings settings)
         {
-            var color = BadgeColorFor(schemaGuid, schemaName);
-            if (color == null) { return null; }
+            var color = BadgeColorFor(schemaGuid, schemaName, settings);
+            return color == null ? null : ToBrush(color.Value);
+        }
 
-            var brush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(color.Value.R, color.Value.G, color.Value.B));
+        public static System.Windows.Media.Brush ToBrush(Color color)
+        {
+            var brush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B));
             brush.Freeze();
             return brush;
         }
 
-        public static Icon Create(Guid? schemaGuid, string schemaName, bool isLightTheme, Size size)
+        public static string ToHex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+
+        /// <summary>Reads "#RRGGBB" (as saved in settings). Anything else, e.g. a hand-edited typo, is ignored.</summary>
+        public static bool TryParseColor(string hex, out Color color)
         {
-            using (var bitmap = CreateBitmap(schemaGuid, schemaName, isLightTheme, size))
+            color = Color.Empty;
+            if (string.IsNullOrWhiteSpace(hex)) { return false; }
+
+            var digits = hex.Trim().TrimStart('#');
+            if (digits.Length != 6 || !int.TryParse(digits, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rgb)) { return false; }
+
+            color = Color.FromArgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+            return true;
+        }
+
+        public static Icon Create(Color? badgeColor, bool isLightTheme, Size size)
+        {
+            using (var bitmap = CreateBitmap(badgeColor, isLightTheme, size))
             {
                 var hIcon = bitmap.GetHicon();
                 try
@@ -77,7 +119,7 @@ namespace PowerSwitcher.TrayApp.Services
             }
         }
 
-        public static Bitmap CreateBitmap(Guid? schemaGuid, string schemaName, bool isLightTheme, Size size)
+        public static Bitmap CreateBitmap(Color? badgeColor, bool isLightTheme, Size size)
         {
             // Tray.ico has a white glyph, TrayLightTheme.ico has a black one.
             var iconFile = isLightTheme ? "TrayLightTheme.ico" : "Tray.ico";
@@ -96,7 +138,6 @@ namespace PowerSwitcher.TrayApp.Services
                 }
             }
 
-            var badgeColor = BadgeColorFor(schemaGuid, schemaName);
             if (badgeColor != null) { drawBadge(bitmap, badgeColor.Value); }
 
             return bitmap;

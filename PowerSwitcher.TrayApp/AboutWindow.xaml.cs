@@ -1,4 +1,4 @@
-using PowerSwitcher.TrayApp.Resources;
+﻿using PowerSwitcher.TrayApp.Resources;
 using PowerSwitcher.TrayApp.Services;
 using System;
 using System.ComponentModel;
@@ -106,7 +106,7 @@ namespace PowerSwitcher.TrayApp
             PlanText.Text = schema?.Name ?? "None";
 
             // Same colour as the tray icon's badge, so this doubles as its legend.
-            var badge = TrayIconFactory.BadgeBrushFor(schema?.Guid, schema?.Name);
+            var badge = TrayIconFactory.BadgeBrushFor(schema?.Guid, schema?.Name, (Application.Current as App)?.Configuration?.Data);
             PlanDot.Visibility = badge == null ? Visibility.Collapsed : Visibility.Visible;
             PlanDot.Fill = badge;
 
