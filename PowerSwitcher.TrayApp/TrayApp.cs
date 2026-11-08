@@ -39,7 +39,6 @@ namespace PowerSwitcher.TrayApp
             _trayIcon.MouseClick += TrayIcon_MouseClick;
 
             UpdateTheme();
-            _trayIcon.Text = string.Concat(AppStrings.AppName);
             _trayIcon.Visible = true;
 
             this.ShowFlyout += (((App)Application.Current).MainWindow as MainWindow).ToggleWindowVisibility;
@@ -110,8 +109,6 @@ namespace PowerSwitcher.TrayApp
             var isLight = ThemeService.IsLightTheme;
             var isHighContrast = ThemeService.IsHighContrast;
 
-            if (isLight != appliedLightTheme) { updateTrayIcon(isLight); }
-
             if (_trayIcon.ContextMenuStrip != null && (isLight != appliedLightTheme || isHighContrast != appliedHighContrast))
             {
                 _trayIcon.ContextMenuStrip.Renderer = TrayMenuRenderer.Create(isHighContrast, isLight);
@@ -119,20 +116,42 @@ namespace PowerSwitcher.TrayApp
 
             appliedLightTheme = isLight;
             appliedHighContrast = isHighContrast;
+
+            refreshTrayIcon();
         }
 
-        private void updateTrayIcon(bool isLight)
+        private Guid? iconSchemaGuid;
+        private string iconSchemaName;
+        private bool? iconLightTheme;
+        private System.Drawing.Size? iconSize;
+
+        /// <summary>Re-renders the tray icon and tooltip for the active plan; cheap no-op when nothing changed.</summary>
+        private void refreshTrayIcon()
         {
-            // Tray.ico has a white glyph, TrayLightTheme.ico has a black one.
-            var iconFile = isLight ? "TrayLightTheme.ico" : "Tray.ico";
+            var schema = pwrManager.CurrentSchema;
+            _trayIcon.Text = trayTooltip(schema);
+
+            var schemaGuid = schema?.Guid;
+            var schemaName = schema?.Name;
+            var isLight = appliedLightTheme ?? ThemeService.IsLightTheme;
+            var size = WF.SystemInformation.SmallIconSize;
+            if (_trayIcon.Icon != null && schemaGuid == iconSchemaGuid && schemaName == iconSchemaName && isLight == iconLightTheme && size == iconSize) { return; }
+
             var previousIcon = _trayIcon.Icon;
-
-            using (var iconStream = Application.GetResourceStream(new Uri($"pack://application:,,,/PowerSwitcher.TrayApp;component/{iconFile}")).Stream)
-            {
-                _trayIcon.Icon = new System.Drawing.Icon(iconStream, WF.SystemInformation.SmallIconSize);
-            }
-
+            _trayIcon.Icon = TrayIconFactory.Create(schemaGuid, schemaName, isLight, size);
             previousIcon?.Dispose();
+
+            iconSchemaGuid = schemaGuid;
+            iconSchemaName = schemaName;
+            iconLightTheme = isLight;
+            iconSize = size;
+        }
+
+        private static string trayTooltip(IPowerSchema schema)
+        {
+            var text = schema == null ? AppStrings.AppName : $"{AppStrings.AppName}: {schema.Name}";
+            const int maxTooltipLength = 127; // NotifyIcon.Text throws above this.
+            return text.Length <= maxTooltipLength ? text : text.Substring(0, maxTooltipLength);
         }
         #endregion
 
@@ -198,6 +217,7 @@ namespace PowerSwitcher.TrayApp
         private void PwrManager_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(IPowerManager.CurrentPowerStatus)) { powerStatusChanged(); }
+            if (e.PropertyName == nameof(IPowerManager.CurrentSchema)) { refreshTrayIcon(); }
         }
 
         private void powerStatusChanged()

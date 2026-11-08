@@ -56,7 +56,7 @@ namespace PowerSwitcher.TrayApp.ViewModels
             if (e.PropertyName == nameof(IPowerManager.CurrentSchema)) { RaisePropertyChangedEvent(nameof(ActiveSchema)); }
         }
 
-        private Guid[] defaultGuids = { new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"), new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"), new Guid("a1841308-3541-4fab-bc81-f71556f20b4a") };
+        private Guid[] defaultGuids = { WellKnownSchemas.HighPerformance, WellKnownSchemas.Balanced, WellKnownSchemas.PowerSaver };
 
         public void SetGuidAsActive(Guid guid)
         {
