@@ -1,0 +1,188 @@
+<local:ThemedDialogWindow x:Class="PowerSwitcher.TrayApp.PlanCompareWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PowerSwitcher.TrayApp"
+        Title="Compare power plans"
+        Icon="AppIcon.ico"
+        Width="900"
+        Height="680"
+        MinWidth="760"
+        MinHeight="420"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextPrimary}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/PowerSwitcher.TrayApp;component/Themes/DialogResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- A value is muted when both plans agree on it, so the eye goes to what's different. -->
+            <Style x:Key="AcValue" TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
+                <Setter Property="Margin" Value="10,0,0,0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding AcDiffers}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="DcValue" TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
+                <Setter Property="Margin" Value="10,0,0,0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding DcDiffers}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Columns are narrow, so a long plan name wraps here instead of being cut off. -->
+            <DataTemplate x:Key="ColumnPlanTemplate">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Ellipse Width="10" Height="10" Margin="0,3,8,0" VerticalAlignment="Top" Fill="{Binding Dot}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" />
+                </Grid>
+            </DataTemplate>
+
+            <Style x:Key="ColumnPlan" TargetType="ContentControl">
+                <Setter Property="ContentTemplate" Value="{StaticResource ColumnPlanTemplate}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Margin" Value="10,0,0,0" />
+                <Setter Property="IsTabStop" Value="False" />
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="24,20,24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Compare plans" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+            <ComboBox x:Name="LeftPlanBox" Style="{StaticResource DropDown}" Width="260"
+                      Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
+                      SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="First plan" />
+            <TextBlock Text="and" Margin="12,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
+            <ComboBox x:Name="RightPlanBox" Style="{StaticResource DropDown}" Width="260"
+                      Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
+                      SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="Second plan" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" x:Name="SummaryText" Style="{StaticResource Secondary}" Margin="0,12,0,12" />
+
+        <!-- Column headings. The right margin lines them up past the card border, the gap and the scrollbar below. -->
+        <Grid Grid.Row="3" x:Name="ColumnHeadings" Margin="17,0,37,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="124" />
+                <ColumnDefinition Width="124" />
+                <ColumnDefinition Width="124" />
+                <ColumnDefinition Width="124" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="Plugged in" FontWeight="SemiBold" Margin="10,0,0,2" />
+            <TextBlock Grid.Column="3" Grid.ColumnSpan="2" Text="On battery" FontWeight="SemiBold" Margin="10,0,0,2" />
+
+            <TextBlock Grid.Row="1" Text="Setting" FontWeight="SemiBold" />
+            <ContentControl Grid.Row="1" Grid.Column="1" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=LeftPlanBox}" />
+            <ContentControl Grid.Row="1" Grid.Column="2" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=RightPlanBox}" />
+            <ContentControl Grid.Row="1" Grid.Column="3" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=LeftPlanBox}" />
+            <ContentControl Grid.Row="1" Grid.Column="4" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=RightPlanBox}" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="4" x:Name="DifferencesScroller" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <ScrollViewer.Resources>
+                <!-- The stock scrollbar stays light in dark mode. -->
+                <Style TargetType="ScrollBar">
+                    <Setter Property="Width" Value="10" />
+                    <Setter Property="MinWidth" Value="10" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollBar">
+                                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb>
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Border Margin="3,0" CornerRadius="2" Background="{DynamicResource TextSecondary}" Opacity="0.6" />
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ScrollViewer.Resources>
+
+            <ItemsControl x:Name="DifferenceGroups" Margin="0,0,10,0" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionHeader}" Text="{Binding Name}" Margin="0,10,0,6" />
+                            <Border Style="{StaticResource Card}">
+                                <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="124" />
+                                                    <ColumnDefinition Width="124" />
+                                                    <ColumnDefinition Width="124" />
+                                                    <ColumnDefinition Width="124" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock TextWrapping="Wrap">
+                                                    <Run Text="{Binding Name, Mode=OneTime}" /><Run Text="{Binding HiddenNote, Mode=OneTime}" Foreground="{DynamicResource TextSecondary}" />
+                                                </TextBlock>
+                                                <TextBlock Grid.Column="1" Style="{StaticResource AcValue}" Text="{Binding AcLeft}" />
+                                                <TextBlock Grid.Column="2" Style="{StaticResource AcValue}" Text="{Binding AcRight}" />
+                                                <TextBlock Grid.Column="3" Style="{StaticResource DcValue}" Text="{Binding DcLeft}" />
+                                                <TextBlock Grid.Column="4" Style="{StaticResource DcValue}" Text="{Binding DcRight}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <DockPanel Grid.Row="5" Margin="0,16,0,0">
+            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Content="Close" IsDefault="True" Click="CloseButton_Click" />
+            <TextBlock Style="{StaticResource Secondary}" VerticalAlignment="Center" FontSize="12" Text="Comparing doesn't change either plan." />
+        </DockPanel>
+    </Grid>
+</local:ThemedDialogWindow>

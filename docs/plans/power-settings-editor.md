@@ -1,6 +1,6 @@
 # Plan: Power plan settings editor
 
-Status: proposed · Target: `develop` via `feature/settings-editor`
+Status: in progress (Phases 1 and 2 done) · Target: `develop`
 
 ## Goal
 
@@ -59,6 +59,8 @@ This comes before any write code. It needs no admin rights, can't change a power
 - A window based on `ThemedDialogWindow`, which Phase 4 grows into the full editor.
 - Pick two plans and show only the settings that differ, AC and DC.
 - This is the most useful view for Ultimate Performance vs High Performance, and for checking what a vendor tool (Razer Cortex and similar) changed.
+
+Done: `PlanCompareWindow`, opened from "Compare plans…" in the tray menu. The differences come from `PowerPlanComparer`, tested against `powercfg /qh`. Opening the window reads every setting on the UI thread, which took about a second on the dev machine; move that off the UI thread if it gets in the way.
 
 ## Phase 3 — Writing
 

@@ -22,14 +22,6 @@
                 <ResourceDictionary Source="pack://application:,,,/PowerSwitcher.TrayApp;component/Themes/DialogResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- A plan in a drop-down: its tray badge colour, then its name. -->
-            <DataTemplate x:Key="PlanTemplate">
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="10" Height="10" Margin="0,1,8,0" VerticalAlignment="Center" Fill="{Binding Dot}" />
-                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-            </DataTemplate>
-
             <Style x:Key="SettingTitle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
             </Style>

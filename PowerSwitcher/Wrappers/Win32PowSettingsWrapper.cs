@@ -67,6 +67,7 @@ namespace PowerSwitcher.Wrappers
             return size == sizeof(Guid) ? personality : null;
         }
 
+        /// <summary>The plan's values for the given settings, in the same order.</summary>
         public List<PowerSettingValue> GetValues(Guid schemeGuid, IEnumerable<PowerSettingDefinition> settings)
         {
             var personality = GetPersonality(schemeGuid);

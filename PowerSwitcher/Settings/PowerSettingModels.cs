@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace PowerSwitcher.Settings
 {
@@ -36,6 +37,20 @@ namespace PowerSwitcher.Settings
 
         // Index settings only; empty for the other kinds.
         public IReadOnlyList<PowerSettingChoice> Choices { get; init; } = Array.Empty<PowerSettingChoice>();
+
+        /// <summary>A value as people read it: the choice's name, or the number with its units.</summary>
+        public string FormatValue(uint? value)
+        {
+            if (value == null) { return "—"; }
+
+            if (Kind == PowerSettingKind.Index)
+            {
+                return Choices.FirstOrDefault(choice => choice.Index == value)?.Name ?? value.ToString();
+            }
+
+            if (string.IsNullOrEmpty(Units)) { return value.ToString(); }
+            return Units == "%" ? $"{value}%" : $"{value} {Units}";
+        }
     }
 
     /// <summary>A setting's values in one plan. Any value is null when Windows has none stored for it.</summary>

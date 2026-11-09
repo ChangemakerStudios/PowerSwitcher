@@ -71,6 +71,9 @@ namespace PowerSwitcher.TrayApp
             updateItem.Click += (s, e) => RestartToUpdate();
             updateItem.Visible = false;
 
+            var compareItem = addMenuItem(contextMenuRootItems, "Compare plans…");
+            compareItem.Click += Compare_Click;
+
             var settingsItem = addMenuItem(contextMenuRootItems, $"{AppStrings.Settings}…");
             settingsItem.Name = "settings";
             settingsItem.Click += Settings_Click;
@@ -290,6 +293,12 @@ namespace PowerSwitcher.TrayApp
 
         private AboutWindow aboutWindow;
         private SettingsWindow settingsWindow;
+        private PlanCompareWindow compareWindow;
+
+        void Compare_Click(object sender, EventArgs e)
+        {
+            showSingleWindow(ref compareWindow, () => new PlanCompareWindow(pwrManager, configuration), w => compareWindow = null);
+        }
 
         void About_Click(object sender, EventArgs e)
         {
