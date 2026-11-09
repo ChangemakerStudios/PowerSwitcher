@@ -7,7 +7,10 @@ using System.Text;
 
 namespace PowerSwitcher.Wrappers
 {
-    /// <summary>Reads the tree of power settings, including the ones Windows hides, and their values in a plan.</summary>
+    /// <summary>
+    /// Reads the tree of power settings, including the ones Windows hides, and reads and writes plans. Go through
+    /// <see cref="PowerPlanEditor"/> to change a plan, so that it's validated and backed up first.
+    /// </summary>
     public unsafe partial class Win32PowSettingsWrapper
     {
         /// <summary>The subgroup Windows files top-level settings under. PowerEnumerate doesn't list it, but it can be queried.</summary>
@@ -80,6 +83,48 @@ namespace PowerSwitcher.Wrappers
                 personality == null ? null : readIndex(PowerReadACDefaultIndex, personality.Value, setting.SubgroupGuid, setting.Guid),
                 personality == null ? null : readIndex(PowerReadDCDefaultIndex, personality.Value, setting.SubgroupGuid, setting.Guid)
                 )).ToList();
+        }
+
+        /// <summary>Stores new values in a plan; null leaves that one as it is. An active plan needs re-applying afterwards.</summary>
+        public void WriteValues(Guid schemeGuid, PowerSettingDefinition definition, uint? acValue, uint? dcValue)
+        {
+            Guid scheme = schemeGuid, subgroup = definition.SubgroupGuid, setting = definition.Guid;
+
+            if (acValue != null) { check(PowerWriteACValueIndex(0, &scheme, &subgroup, &setting, acValue.Value), nameof(PowerWriteACValueIndex)); }
+            if (dcValue != null) { check(PowerWriteDCValueIndex(0, &scheme, &subgroup, &setting, dcValue.Value), nameof(PowerWriteDCValueIndex)); }
+        }
+
+        /// <summary>Copies a plan and returns the copy's GUID. The copy keeps the original's name.</summary>
+        public Guid DuplicatePlan(Guid sourceGuid)
+        {
+            Guid source = sourceGuid;
+            Guid* destination = null;
+
+            check(PowerDuplicateScheme(0, &source, &destination), nameof(PowerDuplicateScheme));
+            return takeGuid(destination);
+        }
+
+        public void DeletePlan(Guid schemeGuid)
+        {
+            Guid scheme = schemeGuid;
+            check(PowerDeleteScheme(0, &scheme), nameof(PowerDeleteScheme));
+        }
+
+        public void RenamePlan(Guid schemeGuid, string name)
+        {
+            Guid scheme = schemeGuid;
+            var buffer = Encoding.Unicode.GetBytes(name + "\0");
+
+            fixed (byte* bufferPointer = buffer)
+            {
+                check(PowerWriteFriendlyName(0, &scheme, null, null, bufferPointer, (uint)buffer.Length), nameof(PowerWriteFriendlyName));
+            }
+        }
+
+        private static Guid takeGuid(Guid* allocatedGuid)
+        {
+            try { return *allocatedGuid; }
+            finally { LocalFree((nint)allocatedGuid); }
         }
 
         private static PowerSettingDefinition readDefinition(Guid subgroupGuid, Guid settingGuid)
@@ -283,6 +328,24 @@ namespace PowerSwitcher.Wrappers
 
         [LibraryImport(PowrProf)]
         private static partial uint PowerReadSettingAttributes(Guid* subgroup, Guid* setting);
+
+        [LibraryImport(PowrProf)]
+        private static partial uint PowerWriteACValueIndex(nint rootPowerKey, Guid* scheme, Guid* subgroup, Guid* setting, uint value);
+
+        [LibraryImport(PowrProf)]
+        private static partial uint PowerWriteDCValueIndex(nint rootPowerKey, Guid* scheme, Guid* subgroup, Guid* setting, uint value);
+
+        [LibraryImport(PowrProf)]
+        private static partial uint PowerDuplicateScheme(nint rootPowerKey, Guid* source, Guid** destination);
+
+        [LibraryImport(PowrProf)]
+        private static partial uint PowerDeleteScheme(nint rootPowerKey, Guid* scheme);
+
+        [LibraryImport(PowrProf)]
+        private static partial uint PowerWriteFriendlyName(nint rootPowerKey, Guid* scheme, Guid* subgroup, Guid* setting, byte* buffer, uint bufferSize);
+
+        [LibraryImport("kernel32.dll")]
+        private static partial nint LocalFree(nint memory);
 
         #endregion
     }

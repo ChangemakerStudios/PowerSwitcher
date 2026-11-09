@@ -1,6 +1,6 @@
 # Plan: Power plan settings editor
 
-Status: in progress (Phases 1 and 2 done) · Target: `develop`
+Status: in progress (Phases 1 to 3 done) · Target: `develop`
 
 ## Goal
 
@@ -70,26 +70,27 @@ Add to the wrapper:
 |---|---|
 | Set values | `PowerWriteACValueIndex` / `PowerWriteDCValueIndex` |
 | Apply to the active plan | `PowerSetActiveScheme(activeGuid)` again after a write |
-| Hide / unhide | `PowerWriteSettingAttributes` |
-| Plan management | `PowerDuplicateScheme` (output GUID freed with `LocalFree`), `PowerDeleteScheme`, `PowerWriteFriendlyName`, `PowerImportPowerScheme` |
-| Export | No API for this; run `powercfg /export` |
+| Plan management | `PowerDuplicateScheme` (output GUID freed with `LocalFree`), `PowerDeleteScheme`, `PowerWriteFriendlyName` |
 
-**Admin rights — find out, don't assume:**
-- Hide/unhide writes under `HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings`, so expect it to need admin.
-- Whether value writes need admin may depend on the plan's security descriptor. Test as a standard user on a built-in plan and on a duplicated one, and record what comes back (`ERROR_ACCESS_DENIED` = 5).
-- The answer decides Phase 5.
+All changes go through `PowerPlanEditor`, which validates values, backs up first, and re-applies the active plan.
 
-**Backup before the first write.** The first time a plan is edited, run `powercfg /export` to a backups folder under `%LOCALAPPDATA%`, so there's a way back after the editor closes. Hidden settings can cause real trouble, and session undo isn't enough on its own.
+**Admin rights, as found from a standard-user process on the dev machine:**
+- All four plans, including the real Balanced, have the same security descriptor, which gives Users read and write (`KRKW;;;BU`). On a scratch copy, 177 of 179 settings accepted a write.
+- Two refused: "Require a password on wakeup" (`ERROR_ACCESS_DENIED` = 5) and "Processor performance core parking min cores" (13, invalid data, even when given its existing value).
+- `powercfg /export` fails without admin (`0x522`, a required privilege isn't held) and leaves an empty file behind.
+- `HKLM\...\Power\PowerSettings` only gives Users read access, so hide/unhide needs admin. Hide/unhide, import and export can't be tested from a standard-user process, so they moved to Phase 5.
 
-**Tell the tray about changes.** `ActiveSchemeWatcher` won't report renames, new plans or deleted plans, so the editor calls `UpdateSchemas` after those. When the editor runs elevated in its own process, it needs a cross-process signal, such as a named event the tray waits on.
+**Backups.** `PowerPlanBackups` saves a plan's name and every value to `%LOCALAPPDATA%\Petrroll\PowerSwitcher\Backups\<guid>.json` before its first change, once per plan, and a failed backup stops the write. `RestoreBackup` puts the plan back, or recreates it if it was deleted. It writes only what differs and reports any setting Windows refuses.
 
-Done when: values written through the wrapper show up in `powercfg /q`, writing to the active plan takes effect without switching plans by hand, and a backup exists before the first write to a plan.
+**Tell the tray about changes.** `ActiveSchemeWatcher` won't report renames, new plans or deleted plans, so `PowerPlanEditor` raises `PlansChanged`; Phase 4 connects that to `UpdateSchemas`. When the editor runs elevated in its own process, it needs a cross-process signal, such as a named event the tray waits on.
+
+Done: `PowerSwitcher.Tests` writes to scratch plans only, and checks the results against `powercfg /qh` and that real plans are unchanged. Re-applying is tested with a stand-in for the active plan, so its effect on a really active plan is still to be confirmed through the editor. Microsoft documents that changes to the active plan need `PowerSetActiveScheme` to take effect.
 
 ## Phase 4 — Editor window (WPF)
 
 `PowerSwitcher.TrayApp/PlanEditorWindow.xaml` + view model, based on `ThemedDialogWindow`:
 
-- **Left:** list of plans with their tray colour dots (same `PlanTemplate` style as Settings), with duplicate / rename / delete / export actions.
+- **Left:** list of plans with their tray colour dots (same `PlanTemplate` style as Settings), with duplicate / rename / delete / restore actions.
 - **Right:** settings tree grouped by subgroup. Columns: Setting, Plugged in, On battery. Range settings get a numeric box with units; list settings get a drop-down.
 - **Filters:** search box (name and description), "Changed from default", "Show hidden settings".
 - **Changed values** shown with an accent marker, with a per-row "Reset to default". Both use the baseline settled in Phase 1.
@@ -107,7 +108,7 @@ Depends on the Phase 3 findings. The tray app should keep running without admin.
 - Give that mode its own startup path. `App.Application_Startup` exits if the single-instance mutex is already held (`App.xaml.cs:31`) and otherwise sets up the tray, so the editor process has to skip both.
 - If an operation needs admin and the process doesn't have it, offer to reopen the editor with admin rights (`runas`), passing the same arguments. Mark admin-only actions in the UI (shield icon) so this isn't a surprise.
 
-If testing shows that value writes don't need admin, only hide/unhide and plan management need this path, and that may be enough to keep everything else in-process.
+Value edits and plan management work without admin (Phase 3), so those stay in-process. This path is for hide/unhide (`PowerWriteSettingAttributes`), import and export (`PowerImportPowerScheme`, `powercfg /export`), and the few settings Windows refuses.
 
 ## Testing
 

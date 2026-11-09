@@ -38,6 +38,17 @@ namespace PowerSwitcher.Settings
         // Index settings only; empty for the other kinds.
         public IReadOnlyList<PowerSettingChoice> Choices { get; init; } = Array.Empty<PowerSettingChoice>();
 
+        /// <summary>Whether this setting can be given the value. Unknown settings can't be edited at all.</summary>
+        public bool AcceptsValue(uint value)
+        {
+            switch (Kind)
+            {
+                case PowerSettingKind.Range: return value >= Min && value <= Max;
+                case PowerSettingKind.Index: return Choices.Any(choice => choice.Index == value);
+                default: return false;
+            }
+        }
+
         /// <summary>A value as people read it: the choice's name, or the number with its units.</summary>
         public string FormatValue(uint? value)
         {

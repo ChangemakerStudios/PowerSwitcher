@@ -72,7 +72,10 @@ namespace PowerSwitcher
                 { setNewCurrSchema(originalSchema); }
                 
                 if (originalSchema?.Name != newSchema.Name)
-                { ((PowerSchema)originalSchema).Name = newSchema.Name; }
+                {
+                    ((PowerSchema)originalSchema).Name = newSchema.Name;
+                    if (originalSchema == CurrentSchema) { RaisePropertyChangedEvent(nameof(CurrentSchema)); } // The tray tooltip names it.
+                }
             }
 
             if(!Schemas.Any(sch => currSchemaGuid == sch.Guid))
