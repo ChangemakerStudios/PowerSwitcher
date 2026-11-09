@@ -36,19 +36,21 @@ The powrprof.dll calls to cover:
 | Value shape | `PowerIsSettingRangeDefined`; if a range: `PowerReadValueMin` / `PowerReadValueMax` / `PowerReadValueIncrement` / `PowerReadValueUnitsSpecifier`; if a list: `PowerReadPossibleFriendlyName` / `PowerReadPossibleValue` |
 | Current values | `PowerReadACValueIndex` / `PowerReadDCValueIndex` |
 | Defaults | `PowerReadACDefaultIndex` / `PowerReadDCDefaultIndex` |
-| Hidden flag | `PowerReadSettingAttributes` (believed to be `POWER_ATTRIBUTE_HIDE` = 1, with 2 meaning something else; confirm against the Windows SDK headers) |
+| Hidden flag | `PowerReadSettingAttributes` (`POWER_ATTRIBUTE_HIDE` = 1) |
 
 Settings that belong to no subgroup sit under `NO_SUBGROUP_GUID` (`fea3413e-7e05-4911-9a71-700331f1c294`). The tree view needs a home for them.
 
 The existing `PowerEnumerate` import takes `IntPtr` for the GUID pointers so `null` can be passed. The new calls need both null and real GUID pointers. Use `LibraryImport` with `Guid*` everywhere in the new wrapper, rather than overloads for every null/non-null combination. This needs `AllowUnsafeBlocks` in `PowerSwitcher.csproj`, which isn't set yet.
 
-**Check before building on it** (each item decides part of the design):
-- Does `PowerEnumerate` with a scheme GUID return every setting, or only ones the scheme has its own value for? Compare against `powercfg /qh <scheme>` on a machine with many hidden settings.
-- The defaults calls take a scheme *personality* GUID, not the scheme GUID. Work out how to get a scheme's personality (it is stored as a setting on the scheme) and confirm that defaults read correctly for built-in plans and for duplicated ones.
-- A personality can only be Power saver, High performance or Balanced, so it doesn't identify every plan. On the dev machine the Ultimate Performance copy has personality Balanced. Read its defaults and count how many settings show as changed. If the tuning that defines the plan shows up as changes, "default" needs a different baseline for such plans, for example comparing against a plan the user picks.
-- Confirm every P/Invoke signature against the Win32 docs. Several pass buffers as `UCHAR*` with a size in/out parameter, the same pattern `GetPowerPlanName` already uses.
+**Findings** (checked on the dev machine: 179 settings, 151 hidden, four plans):
+- `PowerEnumerate` returns the same 179 settings with a scheme GUID or with null, matching `powercfg /qh`. The wrapper passes null. `NO_SUBGROUP_GUID` isn't listed as a subgroup and has no friendly name, but its settings can be enumerated, so the wrapper adds it and uses powercfg's label.
+- `PowerIsSettingRangeDefined` returns TRUE for settings with a range, the opposite of how the Win32 docs read. All 107 TRUE results matched range settings in `powercfg`.
+- Attribute value 1 (`POWER_ATTRIBUTE_HIDE`) exactly separates the settings `/q` leaves out. Eighteen visible settings carry value 2, which isn't hidden.
+- Four settings (`HETEROINCREASETHRESHOLD`, `HETERODECREASETHRESHOLD` and their `1` variants) have neither a range nor choices, in `powercfg` as well. They're `Unknown` and read-only.
+- A plan's personality is the choice its personality setting selects, read as a 16-byte GUID through `PowerReadPossibleValue`. Defaults read correctly for all four plans, three of which are copies.
+- Personality defaults work as the baseline. A personality can only be Power saver, High performance or Balanced, so the Ultimate Performance copy (personality Balanced) is compared with Balanced's defaults, but that shows only 6 changed settings out of 179. Keep this baseline, and have the UI name it (for example "Changed from Balanced defaults") so those rows make sense.
 
-Done when: a read-only dump (see Testing) prints every subgroup and setting for the active plan, with AC/DC values, defaults and the hidden flag, and the output matches `powercfg /qh` for the same plan.
+Done: `PowerSwitcher.Tests` compares every subgroup, setting, range, choice list and AC/DC value against `powercfg /qh` for every listed plan, and the hidden flag against `powercfg /q`.
 
 ## Phase 2 — Plan comparison (read-only)
 
@@ -107,11 +109,9 @@ If testing shows that value writes don't need admin, only hide/unhide and plan m
 
 ## Testing
 
-There is no test project yet. Suggested:
+`PowerSwitcher.Tests` (xUnit, `net10.0-windows`) holds read-only integration tests against the PC's real power settings, including the Phase 1 comparison with `powercfg /qh`. They parse powercfg's English labels, so they need English Windows. Run them with `dotnet test PowerSwitcher.Tests`; CI doesn't run them.
 
-- Add `PowerSwitcher.Tests` (xUnit, `net10.0-windows`) with integration tests that only read: enumeration returns the known subgroups, range settings have min ≤ max, list settings have at least one choice, and the AC/DC values for the active plan match `powercfg /q` output.
-- Write tests run against a scratch plan made with `PowerDuplicateScheme` and deleted at the end. Never write to the user's active or built-in plans in tests.
-- A small dump (a test, or a hidden `--dump-settings` mode) gives the Phase 1 comparison against `powercfg /qh`.
+Write tests run against a scratch plan made with `PowerDuplicateScheme` and deleted at the end. Never write to the user's active or built-in plans in tests.
 
 ## Related issue found on the dev machine
 
