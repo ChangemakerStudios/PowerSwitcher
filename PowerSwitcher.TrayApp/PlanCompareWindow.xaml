@@ -4,9 +4,9 @@
         xmlns:local="clr-namespace:PowerSwitcher.TrayApp"
         Title="Compare power plans"
         Icon="AppIcon.ico"
-        Width="900"
+        Width="980"
         Height="680"
-        MinWidth="760"
+        MinWidth="840"
         MinHeight="420"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
@@ -22,6 +22,8 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/PowerSwitcher.TrayApp;component/Themes/DialogResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="ShowIf" />
 
             <!-- A value is muted when both plans agree on it, so the eye goes to what's different. -->
             <Style x:Key="AcValue" TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
@@ -97,6 +99,7 @@
                 <ColumnDefinition Width="124" />
                 <ColumnDefinition Width="124" />
                 <ColumnDefinition Width="124" />
+                <ColumnDefinition Width="72" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -115,34 +118,7 @@
 
         <ScrollViewer Grid.Row="4" x:Name="DifferencesScroller" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Focusable="False">
             <ScrollViewer.Resources>
-                <!-- The stock scrollbar stays light in dark mode. -->
-                <Style TargetType="ScrollBar">
-                    <Setter Property="Width" Value="10" />
-                    <Setter Property="MinWidth" Value="10" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="ScrollBar">
-                                <Track x:Name="PART_Track" IsDirectionReversed="True">
-                                    <Track.DecreaseRepeatButton>
-                                        <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
-                                    </Track.DecreaseRepeatButton>
-                                    <Track.IncreaseRepeatButton>
-                                        <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
-                                    </Track.IncreaseRepeatButton>
-                                    <Track.Thumb>
-                                        <Thumb>
-                                            <Thumb.Template>
-                                                <ControlTemplate TargetType="Thumb">
-                                                    <Border Margin="3,0" CornerRadius="2" Background="{DynamicResource TextSecondary}" Opacity="0.6" />
-                                                </ControlTemplate>
-                                            </Thumb.Template>
-                                        </Thumb>
-                                    </Track.Thumb>
-                                </Track>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource ThinScrollBar}" />
             </ScrollViewer.Resources>
 
             <ItemsControl x:Name="DifferenceGroups" Margin="0,0,10,0" Focusable="False">
@@ -161,6 +137,7 @@
                                                     <ColumnDefinition Width="124" />
                                                     <ColumnDefinition Width="124" />
                                                     <ColumnDefinition Width="124" />
+                                                    <ColumnDefinition Width="72" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock TextWrapping="Wrap">
                                                     <Run Text="{Binding Name, Mode=OneTime}" /><Run Text="{Binding HiddenNote, Mode=OneTime}" Foreground="{DynamicResource TextSecondary}" />
@@ -169,6 +146,14 @@
                                                 <TextBlock Grid.Column="2" Style="{StaticResource AcValue}" Text="{Binding AcRight}" />
                                                 <TextBlock Grid.Column="3" Style="{StaticResource DcValue}" Text="{Binding DcLeft}" />
                                                 <TextBlock Grid.Column="4" Style="{StaticResource DcValue}" Text="{Binding DcRight}" />
+                                                <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                                    <Button Style="{StaticResource RowAction}" Content="←" Click="CopyToLeft_Click" ToolTip="Copy the second plan's values to the first plan"
+                                                            Visibility="{Binding CanCopyToLeft, Converter={StaticResource ShowIf}}"
+                                                            AutomationProperties.Name="{Binding Name, StringFormat='Copy {0} to the first plan'}" />
+                                                    <Button Style="{StaticResource RowAction}" Content="→" Click="CopyToRight_Click" ToolTip="Copy the first plan's values to the second plan"
+                                                            Visibility="{Binding CanCopyToRight, Converter={StaticResource ShowIf}}"
+                                                            AutomationProperties.Name="{Binding Name, StringFormat='Copy {0} to the second plan'}" />
+                                                </StackPanel>
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -181,8 +166,10 @@
         </ScrollViewer>
 
         <DockPanel Grid.Row="5" Margin="0,16,0,0">
-            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Content="Close" IsDefault="True" Click="CloseButton_Click" />
-            <TextBlock Style="{StaticResource Secondary}" VerticalAlignment="Center" FontSize="12" Text="Comparing doesn't change either plan." />
+            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Content="Close" Margin="8,0,0,0" IsDefault="True" Click="CloseButton_Click" />
+            <Button DockPanel.Dock="Right" x:Name="UndoButton" Style="{StaticResource DialogButton}" Content="Undo" IsEnabled="False" Click="UndoButton_Click" />
+            <TextBlock x:Name="StatusText" Style="{StaticResource Secondary}" VerticalAlignment="Center" FontSize="12" Margin="0,0,12,0"
+                       Text="Comparing doesn't change anything. The arrows copy a setting from one plan to the other." />
         </DockPanel>
     </Grid>
 </local:ThemedDialogWindow>

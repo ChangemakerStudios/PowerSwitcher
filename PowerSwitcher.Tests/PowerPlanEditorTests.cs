@@ -282,6 +282,72 @@ namespace PowerSwitcher.Tests
         }
 
         [Fact]
+        public void DuplicateNamesTheCopyWithoutBackingItUp()
+        {
+            var edit = editor();
+
+            var copy = edit.DuplicatePlan(scratch, ScratchName + " copy");
+            scratchPlans.Add(copy);
+
+            Assert.Equal(ScratchName + " copy", new Win32PowSchemasWrapper().GetPowerPlanName(copy));
+            Assert.False(edit.HasBackup(copy));
+        }
+
+        [Fact]
+        public void UndoPutsBackOnlyTheSideThatChangedInReverseOrder()
+        {
+            var setting = rangeSetting();
+            var before = valueOf(scratch, setting);
+            var firstAc = otherValue(setting, before.AcValue);
+            var firstDc = otherValue(setting, before.DcValue);
+            var edit = editor();
+
+            Assert.False(edit.CanUndo);
+
+            edit.SetValues(scratch, setting, firstAc, null);
+            edit.SetValues(scratch, setting, null, firstDc);
+
+            Assert.Equal(setting.Guid, edit.Undo().Setting.Guid);
+            Assert.Equal(firstAc, valueOf(scratch, setting).AcValue);
+            Assert.Equal(before.DcValue, valueOf(scratch, setting).DcValue);
+
+            edit.Undo();
+            Assert.Equal(before, valueOf(scratch, setting));
+            Assert.False(edit.CanUndo);
+        }
+
+        [Fact]
+        public void UndoReappliesTheActivePlan()
+        {
+            var setting = rangeSetting();
+            var edit = editor();
+            pretendActivePlan = scratch;
+
+            edit.SetValues(scratch, setting, otherValue(setting, valueOf(scratch, setting).AcValue), null);
+            appliedPlans.Clear();
+            edit.Undo();
+
+            Assert.Equal(new[] { scratch }, appliedPlans);
+        }
+
+        [Fact]
+        public void ListsBackupsOfDeletedPlansUntilTheyAreRestored()
+        {
+            var doomed = newScratchPlan(scratch);
+            var edit = editor();
+            pretendActivePlan = scratch;
+
+            Assert.Empty(edit.GetDeletedPlanBackups());
+
+            edit.DeletePlan(doomed);
+            scratchPlans.Remove(doomed);
+            Assert.Equal(doomed, Assert.Single(edit.GetDeletedPlanBackups()).Plan);
+
+            scratchPlans.Add(edit.RestoreBackup(doomed).Plan);
+            Assert.Empty(edit.GetDeletedPlanBackups());
+        }
+
+        [Fact]
         public void WindowsOwnPlansAndTheActivePlanCannotBeDeleted()
         {
             var other = Guid.NewGuid();

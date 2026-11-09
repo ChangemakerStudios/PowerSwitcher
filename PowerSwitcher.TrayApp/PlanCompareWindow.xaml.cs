@@ -5,14 +5,16 @@ using PowerSwitcher.Wrappers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using PlanOption = PowerSwitcher.TrayApp.SettingsWindow.PlanOption;
 
 namespace PowerSwitcher.TrayApp
 {
-    /// <summary>Shows the settings that differ between two power plans. Read-only.</summary>
+    /// <summary>Shows the settings that differ between two power plans, and can copy a setting from one to the other.</summary>
     public partial class PlanCompareWindow : ThemedDialogWindow
     {
         public sealed class DifferenceGroup
@@ -29,6 +31,7 @@ namespace PowerSwitcher.TrayApp
 
         public sealed class DifferenceRow
         {
+            public PowerSettingDifference Difference { get; }
             public string Name { get; }
             public string HiddenNote { get; }
             public string AcLeft { get; }
@@ -37,11 +40,14 @@ namespace PowerSwitcher.TrayApp
             public string DcRight { get; }
             public bool AcDiffers { get; }
             public bool DcDiffers { get; }
+            public bool CanCopyToRight { get; }
+            public bool CanCopyToLeft { get; }
 
             public DifferenceRow(PowerSettingDifference difference)
             {
                 var setting = difference.Setting;
 
+                Difference = difference;
                 Name = setting.Name;
                 HiddenNote = setting.IsHidden ? " · hidden" : string.Empty;
                 AcLeft = setting.FormatValue(difference.Left.AcValue);
@@ -50,11 +56,21 @@ namespace PowerSwitcher.TrayApp
                 DcRight = setting.FormatValue(difference.Right.DcValue);
                 AcDiffers = difference.AcDiffers;
                 DcDiffers = difference.DcDiffers;
+                CanCopyToRight = canCopy(difference, difference.Left);
+                CanCopyToLeft = canCopy(difference, difference.Right);
+            }
+
+            private static bool canCopy(PowerSettingDifference difference, PowerSettingValue source)
+            {
+                bool accepted(uint? value) => value != null && difference.Setting.AcceptsValue(value.Value);
+
+                return (!difference.AcDiffers || accepted(source.AcValue)) && (!difference.DcDiffers || accepted(source.DcValue));
             }
         }
 
         readonly IPowerManager pwrManager;
         readonly ConfigurationInstance<PowerSwitcherSettings> configuration;
+        readonly PowerPlanEditor editor;
         readonly Win32PowSettingsWrapper settingsReader = new Win32PowSettingsWrapper();
 
         List<PowerSubgroup> subgroups = new List<PowerSubgroup>();
@@ -63,10 +79,11 @@ namespace PowerSwitcher.TrayApp
         // True while the window itself is setting the drop-downs, so each change doesn't start a comparison.
         bool loading;
 
-        public PlanCompareWindow(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config)
+        public PlanCompareWindow(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config, PowerPlanEditor planEditor)
         {
             pwrManager = powerManager;
             configuration = config;
+            editor = planEditor;
 
             InitializeComponent();
 
@@ -166,6 +183,52 @@ namespace PowerSwitcher.TrayApp
             SummaryText.Text = message;
             ColumnHeadings.Visibility = Visibility.Collapsed;
             DifferenceGroups.ItemsSource = null;
+        }
+
+        private void CopyToRight_Click(object sender, RoutedEventArgs e) => copy(sender, toRight: true);
+
+        private void CopyToLeft_Click(object sender, RoutedEventArgs e) => copy(sender, toRight: false);
+
+        private void copy(object sender, bool toRight)
+        {
+            if (!(((Button)sender).DataContext is DifferenceRow row)) { return; }
+
+            var difference = row.Difference;
+            var source = toRight ? difference.Left : difference.Right;
+            var target = toRight ? difference.Right : difference.Left;
+            var targetName = ((toRight ? RightPlanBox : LeftPlanBox).SelectedItem as PlanOption)?.Name;
+
+            attempt($"Copied {row.Name} to {targetName}.", $"copy {row.Name}", () => editor.SetValues(
+                target.SchemeGuid,
+                difference.Setting,
+                difference.AcDiffers ? source.AcValue : null,
+                difference.DcDiffers ? source.DcValue : null));
+        }
+
+        private void UndoButton_Click(object sender, RoutedEventArgs e)
+        {
+            attempt("Undid the last copy.", "undo that", () => editor.Undo());
+        }
+
+        /// <summary>Runs an edit, reports how it went, and redraws the list without losing the place in it.</summary>
+        private void attempt(string success, string description, Action action)
+        {
+            try
+            {
+                action();
+                StatusText.Text = success;
+            }
+            catch (Exception ex) when (ex is PowerSwitcherWrappersException || ex is ArgumentException || ex is InvalidOperationException
+                || ex is IOException || ex is UnauthorizedAccessException)
+            {
+                StatusText.Text = $"Couldn't {description}. {ex.Message}";
+            }
+
+            UndoButton.IsEnabled = editor.CanUndo;
+
+            var offset = DifferencesScroller.VerticalOffset;
+            compareSafely();
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => DifferencesScroller.ScrollToVerticalOffset(offset)));
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();

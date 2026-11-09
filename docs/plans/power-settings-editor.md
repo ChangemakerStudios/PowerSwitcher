@@ -1,6 +1,6 @@
 # Plan: Power plan settings editor
 
-Status: in progress (Phases 1 to 3 done) · Target: `develop`
+Status: in progress (Phases 1 to 4 done) · Target: `develop`
 
 ## Goal
 
@@ -99,6 +99,11 @@ Done: `PowerSwitcher.Tests` writes to scratch plans only, and checks the results
 - Follows light/dark/high-contrast themes like the other windows.
 
 Entry points: a tray menu item "Edit power plans…" and a button in Settings.
+
+Done: `PlanEditorWindow`. Things to keep when changing it:
+- The list virtualizes in Standard mode, not Recycling, so a row's controls never get reused for another setting.
+- A drop-down only writes when a person is using it, and the mouse wheel over a closed drop-down scrolls the list instead of changing the value.
+- Undo lives in `PowerPlanEditor`, for the life of the window. The filter is `PowerSettingFilter`.
 
 ## Phase 5 — Admin rights
 

@@ -8,6 +8,9 @@ namespace PowerSwitcher.Settings
     /// <summary>The restored plan, and the names of any settings Windows wouldn't change.</summary>
     public sealed record PowerPlanRestoreResult(Guid Plan, IReadOnlyList<string> RefusedSettings);
 
+    /// <summary>A change that can be undone: the values to put back, with null for a side it didn't touch.</summary>
+    public sealed record PowerPlanEdit(Guid Plan, PowerSettingDefinition Setting, uint? AcValue, uint? DcValue);
+
     /// <summary>The one way to change a power plan: values are validated, and the plan is backed up before its first change.</summary>
     public sealed class PowerPlanEditor
     {
@@ -16,6 +19,7 @@ namespace PowerSwitcher.Settings
         readonly Win32PowSchemasWrapper schemas = new Win32PowSchemasWrapper();
         readonly Func<Guid> getActivePlan;
         readonly Action<Guid> applyPlan;
+        readonly Stack<PowerPlanEdit> undoStack = new Stack<PowerPlanEdit>();
 
         /// <summary>Plans were added, removed or renamed, which the active-plan watcher doesn't report.</summary>
         public event Action PlansChanged;
@@ -43,15 +47,58 @@ namespace PowerSwitcher.Settings
             requireAccepted(setting, dcValue);
 
             backups.EnsureBackup(plan);
-            wrapper.WriteValues(plan, setting, acValue, dcValue);
 
-            // Windows only applies changes to the active plan when it's set as active again.
+            var before = wrapper.GetValues(plan, new[] { setting }).Single();
+            wrapper.WriteValues(plan, setting, acValue, dcValue);
+            undoStack.Push(new PowerPlanEdit(plan, setting, acValue == null ? null : before.AcValue, dcValue == null ? null : before.DcValue));
+
+            applyIfActive(plan);
+        }
+
+        public bool CanUndo => undoStack.Count > 0;
+
+        /// <summary>Reverses the latest <see cref="SetValues"/> made through this editor and says what was put back.</summary>
+        public PowerPlanEdit Undo()
+        {
+            var edit = undoStack.Peek();
+
+            wrapper.WriteValues(edit.Plan, edit.Setting, edit.AcValue, edit.DcValue);
+            undoStack.Pop();
+
+            applyIfActive(edit.Plan);
+            return edit;
+        }
+
+        // Windows only applies changes to the active plan when it's set as active again.
+        private void applyIfActive(Guid plan)
+        {
             if (plan == getActivePlan()) { applyPlan(plan); }
         }
 
-        public Guid DuplicatePlan(Guid source)
+        public bool HasBackup(Guid plan) => backups.Exists(plan);
+
+        /// <summary>Backups of plans that no longer exist, which <see cref="RestoreBackup"/> can bring back.</summary>
+        public List<PowerPlanBackup> GetDeletedPlanBackups()
+        {
+            var plans = schemas.GetCurrentSchemas().Select(schema => schema.Guid).ToHashSet();
+            return backups.LoadAll().Where(backup => !plans.Contains(backup.Plan)).OrderBy(backup => backup.Name).ToList();
+        }
+
+        /// <summary>Copies a plan, giving the copy a name of its own if one is passed. A new plan has nothing to back up yet.</summary>
+        public Guid DuplicatePlan(Guid source, string name = null)
         {
             var copy = wrapper.DuplicatePlan(source);
+
+            try
+            {
+                if (name != null) { wrapper.RenamePlan(copy, name); }
+            }
+            catch (PowerSwitcherWrappersException)
+            {
+                wrapper.DeletePlan(copy);
+                throw;
+            }
+
             PlansChanged?.Invoke();
             return copy;
         }
@@ -99,7 +146,9 @@ namespace PowerSwitcher.Settings
                 var refused = restoreValues(target, backup);
 
                 wrapper.RenamePlan(target, backup.Name);
-                if (target == getActivePlan()) { applyPlan(target); }
+                applyIfActive(target);
+
+                if (!exists) { backups.Remove(plan); } // It's back under a new GUID, so this one no longer counts as deleted.
 
                 PlansChanged?.Invoke();
                 return new PowerPlanRestoreResult(target, refused);

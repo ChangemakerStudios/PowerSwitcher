@@ -50,6 +50,26 @@ namespace PowerSwitcher.Settings
             File.Move(temporaryPath, path);
         }
 
+        public bool Exists(Guid plan) => File.Exists(GetPath(plan));
+
         public PowerPlanBackup Load(Guid plan) => JsonSerializer.Deserialize<PowerPlanBackup>(File.ReadAllText(GetPath(plan)));
+
+        public void Remove(Guid plan) => File.Delete(GetPath(plan));
+
+        /// <summary>Every readable backup; a damaged file is left out rather than getting in the way of the others.</summary>
+        public List<PowerPlanBackup> LoadAll()
+        {
+            var loaded = new List<PowerPlanBackup>();
+            if (!Directory.Exists(folder)) { return loaded; }
+
+            foreach (var path in Directory.EnumerateFiles(folder, "*.json"))
+            {
+                try { loaded.Add(JsonSerializer.Deserialize<PowerPlanBackup>(File.ReadAllText(path))); }
+                catch (JsonException) { }
+                catch (IOException) { }
+            }
+
+            return loaded;
+        }
     }
 }

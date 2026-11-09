@@ -71,6 +71,9 @@ namespace PowerSwitcher.TrayApp
             updateItem.Click += (s, e) => RestartToUpdate();
             updateItem.Visible = false;
 
+            var editItem = addMenuItem(contextMenuRootItems, "Edit power plans…");
+            editItem.Click += Edit_Click;
+
             var compareItem = addMenuItem(contextMenuRootItems, "Compare plans…");
             compareItem.Click += Compare_Click;
 
@@ -295,9 +298,16 @@ namespace PowerSwitcher.TrayApp
         private SettingsWindow settingsWindow;
         private PlanCompareWindow compareWindow;
 
+        private PlanEditorWindow editorWindow;
+
+        void Edit_Click(object sender, EventArgs e)
+        {
+            showSingleWindow(ref editorWindow, () => new PlanEditorWindow(pwrManager, configuration, PowerSwitcher.Settings.PowerPlanEditor.CreateDefault()), w => editorWindow = null);
+        }
+
         void Compare_Click(object sender, EventArgs e)
         {
-            showSingleWindow(ref compareWindow, () => new PlanCompareWindow(pwrManager, configuration), w => compareWindow = null);
+            showSingleWindow(ref compareWindow, () => new PlanCompareWindow(pwrManager, configuration, PowerSwitcher.Settings.PowerPlanEditor.CreateDefault()), w => compareWindow = null);
         }
 
         void About_Click(object sender, EventArgs e)
@@ -307,7 +317,7 @@ namespace PowerSwitcher.TrayApp
 
         void Settings_Click(object sender, EventArgs e)
         {
-            showSingleWindow(ref settingsWindow, () => new SettingsWindow(pwrManager, configuration), w => settingsWindow = null);
+            showSingleWindow(ref settingsWindow, () => new SettingsWindow(pwrManager, configuration, () => Edit_Click(this, EventArgs.Empty)), w => settingsWindow = null);
         }
 
         /// <summary>Shows the window, creating it only if it isn't already open; a second click brings it to the front.</summary>
