@@ -134,9 +134,34 @@
                         <ColumnDefinition Width="9" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                    <Border Width="3" Height="18" CornerRadius="1.5" HorizontalAlignment="Left" Background="{DynamicResource Accent}"
+                    <Border Grid.RowSpan="2" Width="3" CornerRadius="1.5" Margin="0,4" HorizontalAlignment="Left" Background="{DynamicResource Accent}"
                             Visibility="{Binding IsModified, Converter={StaticResource ShowIf}}" ToolTip="{Binding DefaultNote}" />
+
+                    <!--
+                        A changed value says what it was changed from, so Reset isn't a guess. The other side keeps
+                        the line's space, so the two controls in a row stay level.
+                    -->
+                    <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" Margin="1,5,0,0"
+                               Text="{Binding DefaultNote}" ToolTip="{Binding DefaultNote}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRowModified}" Value="True">
+                                        <Setter Property="Visibility" Value="Hidden" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsModified}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
                     <Grid Grid.Column="1" Visibility="{Binding IsRange, Converter={StaticResource ShowIf}}">
                         <Grid.ColumnDefinitions>
@@ -218,7 +243,7 @@
 
                         <Button Grid.Column="3" Style="{StaticResource RowAction}" Content="Reset" VerticalAlignment="Center" HorizontalAlignment="Right"
                                 Visibility="{Binding CanReset, Converter={StaticResource ShowIf}}" Click="ResetButton_Click"
-                                ToolTip="Put this setting back to its default"
+                                ToolTip="{Binding ResetHint}"
                                 AutomationProperties.Name="{Binding Name, StringFormat='Reset {0} to default'}" />
                     </Grid>
                 </Border>

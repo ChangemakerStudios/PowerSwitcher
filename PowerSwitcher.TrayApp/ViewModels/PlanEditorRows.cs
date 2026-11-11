@@ -70,6 +70,19 @@ namespace PowerSwitcher.TrayApp.ViewModels
         public bool IsHidden => Definition.IsHidden;
         public bool CanReset => Ac.CanReset || Dc.CanReset;
 
+        /// <summary>What Reset will put back, side by side, for example "Reset to the defaults: plugged in 70%, on battery 50%".</summary>
+        public string ResetHint
+        {
+            get
+            {
+                var sides = new List<string>();
+                if (Ac.CanReset) { sides.Add($"plugged in {Ac.DefaultDisplay}"); }
+                if (Dc.CanReset) { sides.Add($"on battery {Dc.DefaultDisplay}"); }
+
+                return (sides.Count == 1 ? "Reset to the default: " : "Reset to the defaults: ") + string.Join(", ", sides);
+            }
+        }
+
         public SettingRow(PowerSettingDefinition definition, PowerSettingValue value)
         {
             Definition = definition;
@@ -85,6 +98,7 @@ namespace PowerSwitcher.TrayApp.ViewModels
             Ac.Refresh();
             Dc.Refresh();
             RaisePropertyChangedEvent(nameof(CanReset));
+            RaisePropertyChangedEvent(nameof(ResetHint));
         }
     }
 
@@ -114,13 +128,15 @@ namespace PowerSwitcher.TrayApp.ViewModels
         public PowerSettingChoice Choice => Choices.FirstOrDefault(choice => choice.Index == Value);
         public string Display => Row.Definition.FormatValue(Value);
         public bool IsModified => IsAc ? Row.Value.IsAcModified : Row.Value.IsDcModified;
-        public string DefaultNote => $"Default: {Row.Definition.FormatValue(Default)}";
+        public bool IsRowModified => Row.Value.IsAcModified || Row.Value.IsDcModified;
+        public string DefaultDisplay => Row.Definition.FormatValue(Default);
+        public string DefaultNote => $"Default: {DefaultDisplay}";
 
         public bool CanReset => IsModified && Default != null && Row.Definition.AcceptsValue(Default.Value);
 
         public void Refresh()
         {
-            foreach (var property in new[] { nameof(Value), nameof(Text), nameof(Choice), nameof(Display), nameof(IsModified), nameof(DefaultNote), nameof(CanReset) })
+            foreach (var property in new[] { nameof(Value), nameof(Text), nameof(Choice), nameof(Display), nameof(IsModified), nameof(IsRowModified), nameof(DefaultNote), nameof(CanReset) })
             {
                 RaisePropertyChangedEvent(property);
             }
