@@ -6,6 +6,7 @@
         Icon="AppIcon.ico"
         Width="560"
         SizeToContent="Height"
+        MaxHeight="{x:Static SystemParameters.MaximizedPrimaryScreenHeight}"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
@@ -22,14 +23,6 @@
                 <ResourceDictionary Source="pack://application:,,,/PowerSwitcher.TrayApp;component/Themes/DialogResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- A plan in a drop-down: its tray badge colour, then its name. -->
-            <DataTemplate x:Key="PlanTemplate">
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="10" Height="10" Margin="0,1,8,0" VerticalAlignment="Center" Fill="{Binding Dot}" />
-                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-            </DataTemplate>
-
             <Style x:Key="SettingTitle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
             </Style>
@@ -40,6 +33,11 @@
         </ResourceDictionary>
     </Window.Resources>
 
+    <!-- Taller than a small screen, so it scrolls rather than losing its Close button off the bottom. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+    <ScrollViewer.Resources>
+        <Style TargetType="ScrollBar" BasedOn="{StaticResource ThinScrollBar}" />
+    </ScrollViewer.Resources>
     <StackPanel Margin="24,20,24,20">
 
         <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -159,6 +157,19 @@
             </StackPanel>
         </Border>
 
+        <!-- ───────── Power plans ───────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Power plans" />
+
+        <Border Style="{StaticResource Card}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource DialogButton}" Content="Edit…" VerticalAlignment="Center" Click="EditPlansButton_Click" />
+                <StackPanel Margin="0,0,16,0">
+                    <TextBlock Style="{StaticResource SettingTitle}" Text="Edit power plans" />
+                    <TextBlock Style="{StaticResource SettingDescription}" Text="Change any plan's settings, including the ones Windows hides." />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <!-- ───────── Startup ───────── -->
         <TextBlock Style="{StaticResource SectionHeader}" Text="Startup" />
 
@@ -182,4 +193,5 @@
             <TextBlock Style="{StaticResource Secondary}" VerticalAlignment="Center" FontSize="12" Text="Changes are saved as you make them." />
         </DockPanel>
     </StackPanel>
+    </ScrollViewer>
 </local:ThemedDialogWindow>

@@ -1,5 +1,6 @@
 mode: ContinuousDelivery
-# No release tags exist yet; the last Store build was 0.4.4. Tag master (e.g. `0.5.0`) to take over from here.
+# Versions come from release tags on master (first: 0.5.0, after the Store's 0.4.4). next-version is just
+# a floor: once a release tag is at or above it, the tag wins. Raise it to jump to e.g. 0.6.0 or 1.0.0.
 next-version: 0.5.0
 branches:
   feature:

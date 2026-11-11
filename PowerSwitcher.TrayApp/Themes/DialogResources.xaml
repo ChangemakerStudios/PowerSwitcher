@@ -23,6 +23,14 @@
     <Geometry x:Key="PlugOutline">M453.333,181.333h-42.667V32c0-17.707-14.293-32-32-32h-21.333c-17.707,0-32,14.293-32,32v149.333H186.667V32c0-17.707-14.293-32-32-32h-21.333c-17.707,0-32,14.293-32,32v149.333H58.667C52.8,181.333,48,186.133,48,192v160.107c0.107,58.773,47.68,106.453,106.56,106.56H176v42.667C176,507.2,180.8,512,186.667,512h138.667C331.2,512,336,507.2,336,501.333v-42.667h21.547C416.32,458.56,463.893,410.987,464,352.213V192C464,186.133,459.2,181.333,453.333,181.333z M346.667,32c0-5.867,4.8-10.667,10.667-10.667h21.333c5.867,0,10.667,4.8,10.667,10.667v149.333h-42.667V32z M122.667,32c0-5.867,4.8-10.667,10.667-10.667h21.333c5.867,0,10.667,4.8,10.667,10.667v149.333h-42.667V32z M314.667,490.667H197.333v-32h117.333V490.667z M442.667,352.213c0,46.933-38.08,85.013-85.12,85.12H154.56c-47.04-0.107-85.12-38.187-85.227-85.227v-149.44h373.333V352.213z</Geometry>
     <Geometry x:Key="PlugBolt">M203.093,316.8l35.52,8.32l-31.68,71.467c-1.387,2.987,0.107,6.293,3.52,7.893c1.28,0.64,2.667,0.853,4.053,0.853c2.24,0,4.373-0.747,6.08-2.24l92.16-88.107c1.707-1.493,2.347-3.947,1.6-6.187c-0.96-2.347-2.987-3.947-5.44-4.373L272.853,296l22.293-63.467c1.067-2.987-0.64-6.187-3.947-7.573c-3.307-1.493-7.147-0.853-9.92,1.6l-82.027,79.893c-1.707,1.6-2.347,3.947-1.493,6.187C198.72,314.667,200.747,316.373,203.093,316.8z</Geometry>
 
+    <!-- A plan in a drop-down or heading: its tray badge colour, then its name. -->
+    <DataTemplate x:Key="PlanTemplate">
+        <StackPanel Orientation="Horizontal">
+            <Ellipse Width="10" Height="10" Margin="0,1,8,0" VerticalAlignment="Center" Fill="{Binding Dot}" />
+            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+    </DataTemplate>
+
     <!-- Text -->
 
     <Style x:Key="SectionHeader" TargetType="TextBlock">
@@ -58,6 +66,16 @@
         <Setter Property="Background" Value="{DynamicResource CardBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
         <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- A card that answers the mouse, for lists of rows. -->
+    <Style x:Key="HoverCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource CardHover}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource CardHoverBorder}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Buttons -->
@@ -102,6 +120,95 @@
         <Setter Property="Foreground" Value="{DynamicResource OnAccent}" />
         <Setter Property="Background" Value="{DynamicResource Accent}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+    </Style>
+
+    <!-- A small text-only button for actions inside a row. -->
+    <Style x:Key="RowAction" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource AccentText}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" CornerRadius="4" Background="{TemplateBinding Background}" BorderThickness="1" BorderBrush="Transparent">
+                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SubtleFill}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Text box -->
+
+    <Style x:Key="Field" TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
+        <Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="9,6" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Chrome" CornerRadius="4" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The stock scrollbar stays light in dark mode. Vertical only. -->
+    <Style x:Key="ThinScrollBar" TargetType="ScrollBar">
+        <Setter Property="Width" Value="10" />
+        <Setter Property="MinWidth" Value="10" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Track x:Name="PART_Track" IsDirectionReversed="True">
+                        <Track.DecreaseRepeatButton>
+                            <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
+                        </Track.DecreaseRepeatButton>
+                        <Track.IncreaseRepeatButton>
+                            <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
+                        </Track.IncreaseRepeatButton>
+                        <Track.Thumb>
+                            <Thumb>
+                                <Thumb.Template>
+                                    <ControlTemplate TargetType="Thumb">
+                                        <Border Margin="3,0" CornerRadius="2" Background="{DynamicResource TextSecondary}" Opacity="0.6" />
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track.Thumb>
+                    </Track>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- Toggle switch: a CheckBox whose content (title/description) sits left of an On/Off switch. -->

@@ -95,10 +95,13 @@ namespace PowerSwitcher.TrayApp
         // True while the window itself is setting control values, so their change events don't write back to settings.
         bool loading;
 
-        public SettingsWindow(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config)
+        readonly Action openPlanEditor;
+
+        public SettingsWindow(IPowerManager powerManager, ConfigurationInstance<PowerSwitcherSettings> config, Action openPlanEditor)
         {
             pwrManager = powerManager;
             configuration = config;
+            this.openPlanEditor = openPlanEditor;
             app = Application.Current as App;
 
             InitializeComponent();
@@ -129,6 +132,8 @@ namespace PowerSwitcher.TrayApp
             pwrManager.Schemas.CollectionChanged -= Schemas_CollectionChanged;
             base.OnClosed(e);
         }
+
+        private void EditPlansButton_Click(object sender, RoutedEventArgs e) => openPlanEditor();
 
         #region Automatic switching
 

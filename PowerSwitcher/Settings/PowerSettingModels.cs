@@ -1,0 +1,73 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace PowerSwitcher.Settings
+{
+    public sealed record PowerSubgroup(Guid Guid, string Name, string Description, bool IsHidden);
+
+    public enum PowerSettingKind
+    {
+        /// <summary>A number between <see cref="PowerSettingDefinition.Min"/> and <see cref="PowerSettingDefinition.Max"/>.</summary>
+        Range,
+
+        /// <summary>One of <see cref="PowerSettingDefinition.Choices"/>.</summary>
+        Index,
+
+        /// <summary>Windows reports neither a range nor choices, so the value can only be shown as a number.</summary>
+        Unknown
+    }
+
+    public sealed record PowerSettingChoice(uint Index, string Name);
+
+    public sealed record PowerSettingDefinition
+    {
+        public Guid Guid { get; init; }
+        public Guid SubgroupGuid { get; init; }
+        public string Name { get; init; }
+        public string Description { get; init; }
+        public bool IsHidden { get; init; }
+        public PowerSettingKind Kind { get; init; }
+
+        // Range settings only.
+        public uint? Min { get; init; }
+        public uint? Max { get; init; }
+        public uint? Increment { get; init; }
+        public string Units { get; init; }
+
+        // Index settings only; empty for the other kinds.
+        public IReadOnlyList<PowerSettingChoice> Choices { get; init; } = Array.Empty<PowerSettingChoice>();
+
+        /// <summary>Whether this setting can be given the value. Unknown settings can't be edited at all.</summary>
+        public bool AcceptsValue(uint value)
+        {
+            switch (Kind)
+            {
+                case PowerSettingKind.Range: return value >= Min && value <= Max;
+                case PowerSettingKind.Index: return Choices.Any(choice => choice.Index == value);
+                default: return false;
+            }
+        }
+
+        /// <summary>A value as people read it: the choice's name, or the number with its units.</summary>
+        public string FormatValue(uint? value)
+        {
+            if (value == null) { return "—"; }
+
+            if (Kind == PowerSettingKind.Index)
+            {
+                return Choices.FirstOrDefault(choice => choice.Index == value)?.Name ?? value.ToString();
+            }
+
+            if (string.IsNullOrEmpty(Units)) { return value.ToString(); }
+            return Units == "%" ? $"{value}%" : $"{value} {Units}";
+        }
+    }
+
+    /// <summary>A setting's values in one plan. Any value is null when Windows has none stored for it.</summary>
+    public sealed record PowerSettingValue(Guid SchemeGuid, Guid SettingGuid, uint? AcValue, uint? DcValue, uint? AcDefault, uint? DcDefault)
+    {
+        public bool IsAcModified => AcDefault.HasValue && AcValue != AcDefault;
+        public bool IsDcModified => DcDefault.HasValue && DcValue != DcDefault;
+    }
+}

@@ -1,18 +1,14 @@
 # Release Notes
 
-## PowerPlanSwitcher v0.5.0
+## PowerPlanSwitcher v0.6.0
 
 ### New Features
-- **Installer and automatic updates** - PowerPlanSwitcher now installs with a regular setup program and keeps itself up to date from GitHub releases.
-- **The tray icon shows the active plan** - A coloured dot marks Power saver (green), Balanced (blue), High performance (orange) and Ultimate Performance (red); custom plans get their own colour. Any plan's colour can be changed in Settings. The tooltip names the plan.
-- **Settings window** - All settings in one place, including choosing the flyout's keyboard shortcut.
-- **About window** - Version details, the active plan and power source, update status, and credits.
+- **Power plan editor** - Choose "Edit power plans…" in the tray menu, or Edit… in Settings, to change any plan's settings, including the ones Windows hides. Plugged-in and battery values sit side by side in the plan's colour. Search by name or description, show only the settings changed from the defaults (each one shows its default), and reset any of them.
+- **Manage plans** - Duplicate, rename and delete plans. Each plan is backed up before its first change, so it can be put back as it was, even after it's been deleted. Undo reverses changes until the window is closed.
+- **Compare plans** - "Compare plans…" in the tray menu lists only the settings that differ between two plans, and copies a setting from one plan to the other.
 
 ### Improvements
-- **Follows the Windows theme** - The flyout, menus, windows and tray icon match light, dark and high-contrast themes, and switch live.
-- **Notices plan changes made elsewhere** - Changing the plan in Control Panel or with `powercfg` updates the app straight away.
-- **Start with Windows** - Now a switch in Settings.
-- **.NET 10** - Runs on the current long-term-support .NET.
+- **Show only the built-in plans** - Now includes copies of Power saver, Balanced and High performance, which some PCs list instead of the originals.
 
-### Bug Fixes
-- **Keyboard shortcut** - Turning the shortcut off after it failed to register no longer crashes; a taken shortcut is reported in Settings.
+### Known Issues
+- Windows won't let two settings be changed without administrator rights: "Require a password on wakeup" and one processor core parking setting. The editor says so if you try.
