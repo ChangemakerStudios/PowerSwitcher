@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using PlanOption = PowerSwitcher.TrayApp.SettingsWindow.PlanOption;
 
@@ -17,15 +18,47 @@ namespace PowerSwitcher.TrayApp
     /// <summary>Shows the settings that differ between two power plans, and can copy a setting from one to the other.</summary>
     public partial class PlanCompareWindow : ThemedDialogWindow
     {
+        /// <summary>
+        /// Column backgrounds: each plan's columns are tinted with its tray colour, plugged in lighter and on battery stronger,
+        /// so all four columns can be told apart at a glance.
+        /// </summary>
+        public sealed class ColumnTints
+        {
+            const double PluggedIn = 0.10, OnBattery = 0.22;
+
+            public Brush LeftAc { get; }
+            public Brush LeftDc { get; }
+            public Brush RightAc { get; }
+            public Brush RightDc { get; }
+
+            public ColumnTints(Brush left, Brush right)
+            {
+                LeftAc = tint(left, PluggedIn);
+                LeftDc = tint(left, OnBattery);
+                RightAc = tint(right, PluggedIn);
+                RightDc = tint(right, OnBattery);
+            }
+
+            private static Brush tint(Brush dot, double opacity)
+            {
+                var color = (dot as SolidColorBrush)?.Color ?? Colors.Gray;
+                var brush = new SolidColorBrush(color) { Opacity = opacity };
+                brush.Freeze();
+                return brush;
+            }
+        }
+
         public sealed class DifferenceGroup
         {
             public string Name { get; }
+            public string Glyph { get; }
             public List<DifferenceRow> Rows { get; }
 
-            public DifferenceGroup(PowerSubgroupDifferences group)
+            public DifferenceGroup(PowerSubgroupDifferences group, string leftName, string rightName, ColumnTints tints)
             {
                 Name = group.Subgroup.Name;
-                Rows = group.Differences.Select(difference => new DifferenceRow(difference)).ToList();
+                Glyph = ViewModels.SubgroupIcons.For(group.Subgroup.Guid);
+                Rows = group.Differences.Select(difference => new DifferenceRow(difference, leftName, rightName, tints)).ToList();
             }
         }
 
@@ -33,7 +66,7 @@ namespace PowerSwitcher.TrayApp
         {
             public PowerSettingDifference Difference { get; }
             public string Name { get; }
-            public string HiddenNote { get; }
+            public bool IsHidden { get; }
             public string AcLeft { get; }
             public string AcRight { get; }
             public string DcLeft { get; }
@@ -43,13 +76,26 @@ namespace PowerSwitcher.TrayApp
             public bool CanCopyToRight { get; }
             public bool CanCopyToLeft { get; }
 
-            public DifferenceRow(PowerSettingDifference difference)
+            // Spelled out in full, because an arrow alone doesn't say which plan changes.
+            public string CopyToRightHint { get; }
+            public string CopyToLeftHint { get; }
+            public string CopyToRightName { get; }
+            public string CopyToLeftName { get; }
+
+            public ColumnTints Tints { get; }
+
+            public DifferenceRow(PowerSettingDifference difference, string leftName, string rightName, ColumnTints tints)
             {
                 var setting = difference.Setting;
 
                 Difference = difference;
+                Tints = tints;
                 Name = setting.Name;
-                HiddenNote = setting.IsHidden ? " · hidden" : string.Empty;
+                IsHidden = setting.IsHidden;
+                CopyToRightHint = $"Make {rightName} match {leftName} for this setting";
+                CopyToLeftHint = $"Make {leftName} match {rightName} for this setting";
+                CopyToRightName = $"Copy {setting.Name} from {leftName} to {rightName}";
+                CopyToLeftName = $"Copy {setting.Name} from {rightName} to {leftName}";
                 AcLeft = setting.FormatValue(difference.Left.AcValue);
                 AcRight = setting.FormatValue(difference.Right.AcValue);
                 DcLeft = setting.FormatValue(difference.Left.DcValue);
@@ -173,8 +219,10 @@ namespace PowerSwitcher.TrayApp
             SummaryText.Text = (differences.Count == 1 ? "1 setting differs" : $"{differences.Count} settings differ")
                 + (hidden == 0 ? "." : $", {hidden} of them hidden from Control Panel.");
 
+            var tints = new ColumnTints(left.Dot, right.Dot);
+            ColumnHeadings.DataContext = tints;
             ColumnHeadings.Visibility = Visibility.Visible;
-            DifferenceGroups.ItemsSource = groups.Select(group => new DifferenceGroup(group)).ToList();
+            DifferenceGroups.ItemsSource = groups.Select(group => new DifferenceGroup(group, left.Name, right.Name, tints)).ToList();
             DifferencesScroller.ScrollToTop();
         }
 
@@ -196,9 +244,10 @@ namespace PowerSwitcher.TrayApp
             var difference = row.Difference;
             var source = toRight ? difference.Left : difference.Right;
             var target = toRight ? difference.Right : difference.Left;
+            var sourceName = ((toRight ? LeftPlanBox : RightPlanBox).SelectedItem as PlanOption)?.Name;
             var targetName = ((toRight ? RightPlanBox : LeftPlanBox).SelectedItem as PlanOption)?.Name;
 
-            attempt($"Copied {row.Name} to {targetName}.", $"copy {row.Name}", () => editor.SetValues(
+            attempt($"{targetName} now matches {sourceName} for {row.Name}.", $"copy {row.Name}", () => editor.SetValues(
                 target.SchemeGuid,
                 difference.Setting,
                 difference.AcDiffers ? source.AcValue : null,

@@ -4,10 +4,10 @@
         xmlns:local="clr-namespace:PowerSwitcher.TrayApp"
         Title="Compare power plans"
         Icon="AppIcon.ico"
-        Width="980"
-        Height="680"
-        MinWidth="840"
-        MinHeight="420"
+        Width="1120"
+        Height="720"
+        MinWidth="1000"
+        MinHeight="440"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         UseLayoutRounding="True"
@@ -24,10 +24,18 @@
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="ShowIf" />
+            <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+            <!--
+                Laid out like a merge tool: the first plan's columns on the left, the second plan's on the right,
+                and the copy buttons in the gutter between them, pointing the way the values go.
+                Every row, heading and drop-down uses these same column widths.
+            -->
+            <GridLength x:Key="ValueWidth">120</GridLength>
+            <GridLength x:Key="GutterWidth">160</GridLength>
 
             <!-- A value is muted when both plans agree on it, so the eye goes to what's different. -->
             <Style x:Key="AcValue" TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
-                <Setter Property="Margin" Value="10,0,0,0" />
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding AcDiffers}" Value="True">
                         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
@@ -36,7 +44,6 @@
                 </Style.Triggers>
             </Style>
             <Style x:Key="DcValue" TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
-                <Setter Property="Margin" Value="10,0,0,0" />
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding DcDiffers}" Value="True">
                         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
@@ -45,24 +52,20 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Columns are narrow, so a long plan name wraps here instead of being cut off. -->
-            <DataTemplate x:Key="ColumnPlanTemplate">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Ellipse Width="10" Height="10" Margin="0,3,8,0" VerticalAlignment="Top" Fill="{Binding Dot}" />
-                    <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="Wrap" />
-                </Grid>
-            </DataTemplate>
+            <Style x:Key="ValueCell" TargetType="Border">
+                <Setter Property="Padding" Value="10,9" />
+            </Style>
 
-            <Style x:Key="ColumnPlan" TargetType="ContentControl">
-                <Setter Property="ContentTemplate" Value="{StaticResource ColumnPlanTemplate}" />
-                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="Margin" Value="10,0,0,0" />
-                <Setter Property="IsTabStop" Value="False" />
+            <!-- Column heading: an icon for the power source, on its column's tint. -->
+            <Style x:Key="SourceHeading" TargetType="Border">
+                <Setter Property="Padding" Value="10,7" />
+                <Setter Property="CornerRadius" Value="6,6,0,0" />
+            </Style>
+
+            <Style x:Key="CopyButton" TargetType="Button" BasedOn="{StaticResource RowAction}">
+                <Setter Property="Padding" Value="8,3" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="ToolTipService.InitialShowDelay" Value="200" />
             </Style>
         </ResourceDictionary>
     </Window.Resources>
@@ -77,43 +80,77 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Compare plans" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,12" />
-
-        <StackPanel Grid.Row="1" Orientation="Horizontal">
-            <ComboBox x:Name="LeftPlanBox" Style="{StaticResource DropDown}" Width="260"
-                      Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
-                      SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="First plan" />
-            <TextBlock Text="and" Margin="12,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
-            <ComboBox x:Name="RightPlanBox" Style="{StaticResource DropDown}" Width="260"
-                      Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
-                      SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="Second plan" />
+        <StackPanel>
+            <TextBlock Text="Compare plans" FontSize="24" FontWeight="SemiBold" />
+            <TextBlock x:Name="SummaryText" Style="{StaticResource Secondary}" Margin="0,4,0,16" />
         </StackPanel>
 
-        <TextBlock Grid.Row="2" x:Name="SummaryText" Style="{StaticResource Secondary}" Margin="0,12,0,12" />
-
-        <!-- Column headings. The right margin lines them up past the card border, the gap and the scrollbar below. -->
-        <Grid Grid.Row="3" x:Name="ColumnHeadings" Margin="17,0,37,6">
+        <!-- Each plan's drop-down sits over its own columns. The margins match the cards' border and padding, the gap and the scrollbar below. -->
+        <Grid Grid.Row="1" Margin="17,0,37,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="124" />
-                <ColumnDefinition Width="124" />
-                <ColumnDefinition Width="124" />
-                <ColumnDefinition Width="124" />
-                <ColumnDefinition Width="72" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                <ColumnDefinition Width="{StaticResource GutterWidth}" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
 
-            <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="Plugged in" FontWeight="SemiBold" Margin="10,0,0,2" />
-            <TextBlock Grid.Column="3" Grid.ColumnSpan="2" Text="On battery" FontWeight="SemiBold" Margin="10,0,0,2" />
+            <ComboBox Grid.Column="1" Grid.ColumnSpan="2" x:Name="LeftPlanBox" Style="{StaticResource DropDown}" MinWidth="0"
+                      Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
+                      SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="First plan" />
+            <TextBlock Grid.Column="3" Text="and" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
+            <ComboBox Grid.Column="4" Grid.ColumnSpan="2" x:Name="RightPlanBox" Style="{StaticResource DropDown}" MinWidth="0"
+                      Tag="Choose a plan" ItemTemplate="{StaticResource PlanTemplate}"
+                      SelectionChanged="PlanBox_SelectionChanged" AutomationProperties.Name="Second plan" />
+        </Grid>
 
-            <TextBlock Grid.Row="1" Text="Setting" FontWeight="SemiBold" />
-            <ContentControl Grid.Row="1" Grid.Column="1" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=LeftPlanBox}" />
-            <ContentControl Grid.Row="1" Grid.Column="2" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=RightPlanBox}" />
-            <ContentControl Grid.Row="1" Grid.Column="3" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=LeftPlanBox}" />
-            <ContentControl Grid.Row="1" Grid.Column="4" Style="{StaticResource ColumnPlan}" Content="{Binding SelectedItem, ElementName=RightPlanBox}" />
+        <Grid Grid.Row="2" x:Name="ColumnHeadings" Margin="17,0,37,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                <ColumnDefinition Width="{StaticResource GutterWidth}" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                <ColumnDefinition Width="{StaticResource ValueWidth}" />
+            </Grid.ColumnDefinitions>
+            <Grid.Resources>
+                <Style TargetType="TextBlock">
+                    <Setter Property="FontSize" Value="12" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+            </Grid.Resources>
+
+            <TextBlock Text="Setting" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Bottom" Margin="0,0,0,7" />
+
+            <Border Grid.Column="1" Style="{StaticResource SourceHeading}" Background="{Binding LeftAc}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE945;" FontFamily="{StaticResource IconFont}" FontWeight="Normal" Margin="0,0,6,0" />
+                    <TextBlock Text="Plugged in" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource SourceHeading}" Background="{Binding LeftDc}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE83F;" FontFamily="{StaticResource IconFont}" FontWeight="Normal" Margin="0,0,6,0" />
+                    <TextBlock Text="On battery" />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Grid.Column="3" Text="Copy a setting" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,7" />
+
+            <Border Grid.Column="4" Style="{StaticResource SourceHeading}" Background="{Binding RightAc}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE945;" FontFamily="{StaticResource IconFont}" FontWeight="Normal" Margin="0,0,6,0" />
+                    <TextBlock Text="Plugged in" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="5" Style="{StaticResource SourceHeading}" Background="{Binding RightDc}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE83F;" FontFamily="{StaticResource IconFont}" FontWeight="Normal" Margin="0,0,6,0" />
+                    <TextBlock Text="On battery" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         <ScrollViewer Grid.Row="4" x:Name="DifferencesScroller" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Focusable="False">
@@ -125,35 +162,66 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionHeader}" Text="{Binding Name}" Margin="0,10,0,6" />
-                            <Border Style="{StaticResource Card}">
+                            <Grid Margin="2,20,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentText}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+
+                            <!-- No vertical padding, so each column's tint runs the full height of the card. -->
+                            <Border Style="{StaticResource Card}" Padding="16,0">
                                 <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid Margin="0,4">
+                                            <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="124" />
-                                                    <ColumnDefinition Width="124" />
-                                                    <ColumnDefinition Width="124" />
-                                                    <ColumnDefinition Width="124" />
-                                                    <ColumnDefinition Width="72" />
+                                                    <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                                                    <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                                                    <ColumnDefinition Width="{StaticResource GutterWidth}" />
+                                                    <ColumnDefinition Width="{StaticResource ValueWidth}" />
+                                                    <ColumnDefinition Width="{StaticResource ValueWidth}" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock TextWrapping="Wrap">
-                                                    <Run Text="{Binding Name, Mode=OneTime}" /><Run Text="{Binding HiddenNote, Mode=OneTime}" Foreground="{DynamicResource TextSecondary}" />
-                                                </TextBlock>
-                                                <TextBlock Grid.Column="1" Style="{StaticResource AcValue}" Text="{Binding AcLeft}" />
-                                                <TextBlock Grid.Column="2" Style="{StaticResource AcValue}" Text="{Binding AcRight}" />
-                                                <TextBlock Grid.Column="3" Style="{StaticResource DcValue}" Text="{Binding DcLeft}" />
-                                                <TextBlock Grid.Column="4" Style="{StaticResource DcValue}" Text="{Binding DcRight}" />
-                                                <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                                    <Button Style="{StaticResource RowAction}" Content="←" Click="CopyToLeft_Click" ToolTip="Copy the second plan's values to the first plan"
-                                                            Visibility="{Binding CanCopyToLeft, Converter={StaticResource ShowIf}}"
-                                                            AutomationProperties.Name="{Binding Name, StringFormat='Copy {0} to the first plan'}" />
-                                                    <Button Style="{StaticResource RowAction}" Content="→" Click="CopyToRight_Click" ToolTip="Copy the first plan's values to the second plan"
-                                                            Visibility="{Binding CanCopyToRight, Converter={StaticResource ShowIf}}"
-                                                            AutomationProperties.Name="{Binding Name, StringFormat='Copy {0} to the second plan'}" />
-                                                </StackPanel>
+
+                                                <WrapPanel VerticalAlignment="Center" Margin="0,9,12,9">
+                                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                    <Border Padding="7,0,7,1" Margin="0,2" CornerRadius="9" BorderThickness="1" BorderBrush="{DynamicResource ButtonBorder}" VerticalAlignment="Center"
+                                                            Visibility="{Binding IsHidden, Converter={StaticResource ShowIf}}"
+                                                            ToolTip="Windows hides this setting from its own power options.">
+                                                        <TextBlock Text="Hidden" FontSize="11" Foreground="{DynamicResource TextSecondary}" />
+                                                    </Border>
+                                                </WrapPanel>
+
+                                                <Border Grid.Column="1" Style="{StaticResource ValueCell}" Background="{Binding Tints.LeftAc}">
+                                                    <TextBlock Style="{StaticResource AcValue}" Text="{Binding AcLeft}" VerticalAlignment="Center" />
+                                                </Border>
+                                                <Border Grid.Column="2" Style="{StaticResource ValueCell}" Background="{Binding Tints.LeftDc}">
+                                                    <TextBlock Style="{StaticResource DcValue}" Text="{Binding DcLeft}" VerticalAlignment="Center" />
+                                                </Border>
+
+                                                <!-- Each button sits on the side it copies from, and its arrow points at the plan it changes. -->
+                                                <Grid Grid.Column="3" Margin="6,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Button Style="{StaticResource CopyButton}" Content="Copy →" HorizontalAlignment="Left" Click="CopyToRight_Click"
+                                                            ToolTip="{Binding CopyToRightHint}" Visibility="{Binding CanCopyToRight, Converter={StaticResource ShowIf}}"
+                                                            AutomationProperties.Name="{Binding CopyToRightName}" />
+                                                    <Button Grid.Column="1" Style="{StaticResource CopyButton}" Content="← Copy" HorizontalAlignment="Right" Click="CopyToLeft_Click"
+                                                            ToolTip="{Binding CopyToLeftHint}" Visibility="{Binding CanCopyToLeft, Converter={StaticResource ShowIf}}"
+                                                            AutomationProperties.Name="{Binding CopyToLeftName}" />
+                                                </Grid>
+
+                                                <Border Grid.Column="4" Style="{StaticResource ValueCell}" Background="{Binding Tints.RightAc}">
+                                                    <TextBlock Style="{StaticResource AcValue}" Text="{Binding AcRight}" VerticalAlignment="Center" />
+                                                </Border>
+                                                <Border Grid.Column="5" Style="{StaticResource ValueCell}" Background="{Binding Tints.RightDc}">
+                                                    <TextBlock Style="{StaticResource DcValue}" Text="{Binding DcRight}" VerticalAlignment="Center" />
+                                                </Border>
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -169,7 +237,7 @@
             <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Content="Close" Margin="8,0,0,0" IsDefault="True" Click="CloseButton_Click" />
             <Button DockPanel.Dock="Right" x:Name="UndoButton" Style="{StaticResource DialogButton}" Content="Undo" IsEnabled="False" Click="UndoButton_Click" />
             <TextBlock x:Name="StatusText" Style="{StaticResource Secondary}" VerticalAlignment="Center" FontSize="12" Margin="0,0,12,0"
-                       Text="Comparing doesn't change anything. The arrows copy a setting from one plan to the other." />
+                       Text="Comparing changes nothing. Copy → makes the right-hand plan match the left one for that setting; ← Copy does the opposite." />
         </DockPanel>
     </Grid>
 </local:ThemedDialogWindow>
