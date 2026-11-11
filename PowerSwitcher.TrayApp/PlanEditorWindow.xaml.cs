@@ -292,7 +292,7 @@ namespace PowerSwitcher.TrayApp
 
                 if (matching.Count == 0) { continue; }
 
-                items.Add(new SubgroupHeaderRow(subgroup.Name));
+                items.Add(new SubgroupHeaderRow(subgroup.Guid, subgroup.Name, matching.Count, isFirst: items.Count == 0));
                 items.AddRange(matching);
                 shown += matching.Count;
             }
