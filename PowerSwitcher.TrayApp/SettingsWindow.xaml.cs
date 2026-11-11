@@ -1,4 +1,4 @@
-﻿using Petrroll.Helpers;
+using Petrroll.Helpers;
 using PowerSwitcher.TrayApp.Configuration;
 using PowerSwitcher.TrayApp.Services;
 using System;
@@ -117,6 +117,7 @@ namespace PowerSwitcher.TrayApp
 
             pwrManager.UpdateSchemas();
             loadPlans();
+            loadSchedule();
             loadPlanColors();
             loadShortcutChoices();
 
@@ -155,7 +156,9 @@ namespace PowerSwitcher.TrayApp
         private void Schemas_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             loadPlans();
+            loadSchedulePlans();
             loadPlanColors();
+            updateScheduleStatus();
         }
 
         private void AutoSwitchToggle_Changed(object sender, RoutedEventArgs e)
@@ -165,6 +168,7 @@ namespace PowerSwitcher.TrayApp
 
             configuration.Data.AutomaticOnACSwitch = AutoSwitchToggle.IsChecked == true; // TrayApp applies the plan right away.
             configuration.Save();
+            updateScheduleStatus(); // It mentions the battery plan when this is on.
         }
 
         private void PlanBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -175,6 +179,159 @@ namespace PowerSwitcher.TrayApp
             if (sender == OnAcPlanBox) { configuration.Data.AutomaticPlanGuidOnAC = option.Guid; }
             else { configuration.Data.AutomaticPlanGuidOffAC = option.Guid; }
             configuration.Save();
+        }
+
+        #endregion
+
+        #region Schedule
+
+        private void loadSchedule()
+        {
+            var wasLoading = loading;
+            loading = true;
+            var data = configuration.Data;
+
+            ScheduleToggle.IsChecked = data.ScheduleEnabled;
+
+            // Days in the order the user's calendar starts its week, with its own short names.
+            var format = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat;
+            DayChips.Children.Clear();
+            for (var i = 0; i < 7; i++)
+            {
+                var day = (DayOfWeek)(((int)format.FirstDayOfWeek + i) % 7);
+                var chip = new CheckBox
+                {
+                    Style = (Style)FindResource("FilterChip"),
+                    Content = format.AbbreviatedDayNames[(int)day],
+                    Tag = day,
+                    IsChecked = data.IsWorkDay(day),
+                    Padding = new Thickness(0),
+                    Margin = new Thickness(0, 0, 6, 0),
+                };
+                System.Windows.Automation.AutomationProperties.SetName(chip, format.GetDayName(day));
+                chip.Checked += DayChip_Changed;
+                chip.Unchecked += DayChip_Changed;
+                DayChips.Children.Add(chip);
+            }
+
+            StartBox.ItemsSource = timeOptions(data.ScheduleStartMinutes);
+            StartBox.SelectedItem = ((List<Option<int>>)StartBox.ItemsSource).First(o => o.Value == data.ScheduleStartMinutes);
+            EndBox.ItemsSource = timeOptions(data.ScheduleEndMinutes);
+            EndBox.SelectedItem = ((List<Option<int>>)EndBox.ItemsSource).First(o => o.Value == data.ScheduleEndMinutes);
+
+            loadSchedulePlans();
+            loading = wasLoading;
+            updateScheduleStatus();
+        }
+
+        private void loadSchedulePlans()
+        {
+            var wasLoading = loading;
+            loading = true;
+
+            var options = pwrManager.Schemas.Select(sch => new PlanOption(sch, configuration.Data)).ToList();
+            DuringPlanBox.ItemsSource = options;
+            OutsidePlanBox.ItemsSource = options;
+            DuringPlanBox.SelectedItem = options.FirstOrDefault(o => o.Guid == configuration.Data.SchedulePlanDuring);
+            OutsidePlanBox.SelectedItem = options.FirstOrDefault(o => o.Guid == configuration.Data.SchedulePlanOutside);
+
+            loading = wasLoading;
+        }
+
+        /// <summary>Every half hour of the day, in the user's time format, plus the saved time if it's in between.</summary>
+        private static List<Option<int>> timeOptions(int saved)
+        {
+            var minutes = Enumerable.Range(0, 48).Select(i => i * 30).ToList();
+            if (saved >= 0 && saved < 24 * 60 && !minutes.Contains(saved)) { minutes.Add(saved); minutes.Sort(); }
+
+            return minutes.Select(m => new Option<int>(m, DateTime.Today.AddMinutes(m).ToString("t"))).ToList();
+        }
+
+        private void ScheduleToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            updateEnabledStates();
+            if (loading) { return; }
+
+            var data = configuration.Data;
+            var on = ScheduleToggle.IsChecked == true;
+
+            // First time on: start from High performance for work and Balanced for the rest, if this PC has them.
+            if (on && data.SchedulePlanDuring == Guid.Empty) { data.SchedulePlanDuring = findPlan(WellKnownSchemas.HighPerformance, "high performance") ?? Guid.Empty; }
+            if (on && data.SchedulePlanOutside == Guid.Empty) { data.SchedulePlanOutside = findPlan(WellKnownSchemas.Balanced, "balanced") ?? Guid.Empty; }
+
+            data.ScheduleEnabled = on; // TrayApp applies the plan right away.
+            configuration.Save();
+
+            loadSchedulePlans();
+            updateScheduleStatus();
+        }
+
+        // A built-in plan, or a copy of it with the same name (some PCs only list copies).
+        private Guid? findPlan(Guid builtIn, string englishName) =>
+            pwrManager.Schemas.FirstOrDefault(sch => sch.Guid == builtIn)?.Guid
+            ?? pwrManager.Schemas.FirstOrDefault(sch => string.Equals(sch.Name?.Trim(), englishName, StringComparison.OrdinalIgnoreCase))?.Guid;
+
+        private void DayChip_Changed(object sender, RoutedEventArgs e)
+        {
+            if (loading) { return; }
+
+            var chip = (CheckBox)sender;
+            configuration.Data.SetWorkDay((DayOfWeek)chip.Tag, chip.IsChecked == true);
+            configuration.Save();
+            updateScheduleStatus();
+        }
+
+        private void HoursBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (loading) { return; }
+            if (!(((ComboBox)sender).SelectedItem is Option<int> time)) { return; }
+
+            if (sender == StartBox) { configuration.Data.ScheduleStartMinutes = time.Value; }
+            else { configuration.Data.ScheduleEndMinutes = time.Value; }
+            configuration.Save();
+            updateScheduleStatus();
+        }
+
+        private void SchedulePlanBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (loading) { return; }
+            if (!(((ComboBox)sender).SelectedItem is PlanOption option)) { return; }
+
+            if (sender == DuringPlanBox) { configuration.Data.SchedulePlanDuring = option.Guid; }
+            else { configuration.Data.SchedulePlanOutside = option.Guid; }
+            configuration.Save();
+            updateScheduleStatus();
+        }
+
+        /// <summary>Says what the schedule is doing right now, in plain words, so the setup can be checked at a glance.</summary>
+        private void updateScheduleStatus()
+        {
+            var data = configuration.Data;
+            ScheduleStatus.Text = ScheduleStatusText(data, DateTime.Now, guid => pwrManager.Schemas.FirstOrDefault(sch => sch.Guid == guid)?.Name);
+        }
+
+        public static string ScheduleStatusText(PowerSwitcherSettings data, DateTime now, Func<Guid, string> planName)
+        {
+            var schedule = data.GetWorkSchedule();
+            if (schedule.Days.Count == 0) { return "Choose at least one work day."; }
+            if (!schedule.HasWorkHours) { return "Choose different start and end times."; }
+
+            var working = schedule.IsWorkTime(now);
+            var plan = planName(working ? data.SchedulePlanDuring : data.SchedulePlanOutside);
+            var next = schedule.NextChange(now);
+
+            var when = next == null ? "" : next.Value.Date == now.Date
+                ? $" until {next.Value:t}"
+                : next.Value.Date == now.Date.AddDays(1) ? $" until {next.Value:t} tomorrow" : $" until {next.Value:dddd} at {next.Value:t}";
+
+            var text = plan == null
+                ? $"It's {(working ? "work hours" : "outside work hours")} now. Choose a plan for {(working ? "work hours" : "outside them")}."
+                : $"It's {(working ? "work hours" : "outside work hours")} now, so {plan} applies{when}.";
+
+            if (data.AutomaticOnACSwitch) { text += " On battery, the battery plan above comes first."; }
+            if (data.SchedulePlanDuring != Guid.Empty && data.SchedulePlanDuring == data.SchedulePlanOutside) { text += " Both times use the same plan."; }
+
+            return text;
         }
 
         #endregion
@@ -220,7 +377,7 @@ namespace PowerSwitcher.TrayApp
             configuration.Save();
 
             // Rebuild after this event finishes: the rows (and the auto-switch pickers' dots) now show the new color.
-            Dispatcher.BeginInvoke(new Action(() => { loadPlanColors(); loadPlans(); }));
+            Dispatcher.BeginInvoke(new Action(() => { loadPlanColors(); loadPlans(); loadSchedulePlans(); }));
         }
 
         /// <summary>The Windows color dialog, starting at <paramref name="current"/>. Returns "#RRGGBB", or null if cancelled.</summary>
@@ -328,6 +485,7 @@ namespace PowerSwitcher.TrayApp
         private void updateEnabledStates()
         {
             AutoPlansCard.IsEnabled = AutoSwitchToggle.IsChecked == true;
+            ScheduleCard.IsEnabled = ScheduleToggle.IsChecked == true;
             ShortcutPicker.IsEnabled = ShortcutToggle.IsChecked == true;
         }
 

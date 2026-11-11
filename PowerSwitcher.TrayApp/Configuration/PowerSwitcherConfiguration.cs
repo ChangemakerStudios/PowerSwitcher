@@ -1,4 +1,5 @@
 ﻿using Petrroll.Helpers;
+using PowerSwitcher.Scheduling;
 using PowerSwitcher.TrayApp.Services;
 using System;
 using System.Collections.Generic;
@@ -23,6 +24,41 @@ namespace PowerSwitcher.TrayApp.Configuration
 
         Guid automaticPlanGuidOffAC = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a");
         public Guid AutomaticPlanGuidOffAC { get { return automaticPlanGuidOffAC; } set { automaticPlanGuidOffAC = value; RaisePropertyChangedEvent(nameof(AutomaticPlanGuidOffAC)); } }
+
+        bool scheduleEnabled = false;
+        public bool ScheduleEnabled { get { return scheduleEnabled; } set { scheduleEnabled = value; RaisePropertyChangedEvent(nameof(ScheduleEnabled)); } }
+
+        // Work days as bits, 1 << (int)DayOfWeek; Monday to Friday by default. (A list would be appended to on load, not replaced.)
+        int scheduleDays = 0b0111110;
+        public int ScheduleDays { get { return scheduleDays; } set { scheduleDays = value; RaisePropertyChangedEvent(nameof(ScheduleDays)); } }
+
+        // Minutes after midnight. An end before the start runs past midnight.
+        int scheduleStartMinutes = 9 * 60;
+        public int ScheduleStartMinutes { get { return scheduleStartMinutes; } set { scheduleStartMinutes = value; RaisePropertyChangedEvent(nameof(ScheduleStartMinutes)); } }
+
+        int scheduleEndMinutes = 17 * 60;
+        public int ScheduleEndMinutes { get { return scheduleEndMinutes; } set { scheduleEndMinutes = value; RaisePropertyChangedEvent(nameof(ScheduleEndMinutes)); } }
+
+        // Empty until chosen; Settings suggests High performance and Balanced when the schedule is first turned on.
+        Guid schedulePlanDuring = Guid.Empty;
+        public Guid SchedulePlanDuring { get { return schedulePlanDuring; } set { schedulePlanDuring = value; RaisePropertyChangedEvent(nameof(SchedulePlanDuring)); } }
+
+        Guid schedulePlanOutside = Guid.Empty;
+        public Guid SchedulePlanOutside { get { return schedulePlanOutside; } set { schedulePlanOutside = value; RaisePropertyChangedEvent(nameof(SchedulePlanOutside)); } }
+
+        public bool IsWorkDay(DayOfWeek day) => (ScheduleDays & (1 << (int)day)) != 0;
+
+        public void SetWorkDay(DayOfWeek day, bool isWorkDay) =>
+            ScheduleDays = isWorkDay ? ScheduleDays | (1 << (int)day) : ScheduleDays & ~(1 << (int)day);
+
+        public WorkSchedule GetWorkSchedule() => new WorkSchedule(
+            Enum.GetValues<DayOfWeek>().Where(IsWorkDay),
+            TimeSpan.FromMinutes(Math.Clamp(ScheduleStartMinutes, 0, 24 * 60 - 1)),
+            TimeSpan.FromMinutes(Math.Clamp(ScheduleEndMinutes, 0, 24 * 60 - 1)));
+
+        public AutomaticSwitching GetAutomaticSwitching() => new AutomaticSwitching(
+            AutomaticOnACSwitch, AutomaticPlanGuidOnAC, AutomaticPlanGuidOffAC,
+            ScheduleEnabled ? GetWorkSchedule() : null, SchedulePlanDuring, SchedulePlanOutside);
 
         // Changing these doesn't re-register the shortcut by itself; call App.ApplyHotkeyFromConfiguration() afterwards.
         public Key ShowOnShortcutKey { get; set; } = Key.L;

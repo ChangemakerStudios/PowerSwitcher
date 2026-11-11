@@ -27,7 +27,6 @@
             <BooleanToVisibilityConverter x:Key="ShowIf" />
 
             <!-- Type scale, about 1.2 apart: 12 notes, 14 setting names, 16 sections, 20 the plan, 24 the window. -->
-            <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
             <!-- The selected plan's colour behind its value columns (see PlanTints); replaced whenever the plan changes. -->
             <SolidColorBrush x:Key="PluggedInTint" Color="Transparent" />
@@ -42,45 +41,6 @@
                 <Setter Property="CornerRadius" Value="6,6,0,0" />
             </Style>
 
-            <!-- A filter that's on or off: outlined when off, filled with the accent and ticked when on. -->
-            <Style x:Key="FilterChip" TargetType="CheckBox">
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-                <Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="CheckBox">
-                            <Grid>
-                                <Border x:Name="Chrome" CornerRadius="16" MinHeight="32" Padding="14,0" BorderThickness="1"
-                                        Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="{StaticResource IconFont}" FontSize="12"
-                                                   Margin="0,1,8,0" VerticalAlignment="Center" Visibility="Collapsed" />
-                                        <ContentPresenter VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <Border x:Name="FocusRing" CornerRadius="16" BorderThickness="2" BorderBrush="{DynamicResource TextPrimary}" Visibility="Collapsed" />
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Accent}" />
-                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Accent}" />
-                                    <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
-                                    <Setter Property="Foreground" Value="{DynamicResource OnAccent}" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Chrome" Property="Opacity" Value="0.9" />
-                                </Trigger>
-                                <Trigger Property="IsKeyboardFocused" Value="True">
-                                    <Setter TargetName="FocusRing" Property="Visibility" Value="Visible" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
 
             <Style x:Key="PlanList" TargetType="ListBox">
                 <Setter Property="Background" Value="Transparent" />
