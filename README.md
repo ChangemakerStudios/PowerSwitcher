@@ -21,6 +21,9 @@ The tray icon carries a coloured dot for the active plan, so you can tell at a g
 - **Quick switching** — click the tray icon for a Windows-style flyout of your power plans. It works from the keyboard too, and can be limited to the built-in plans.
 - **The active plan at a glance** — a coloured dot on the tray icon, one colour per plan. Pick each plan's colour in Settings.
 - **Automatic switching** — choose one plan for when you're plugged in and another for battery.
+- **Edit any plan** — every setting, including the ones Windows hides, with plugged-in and battery values side by side. Search, see what's changed from the defaults, and reset it.
+- **Compare plans** — see only the settings that differ between two plans, and copy a setting across.
+- **Manage plans** — duplicate, rename and delete plans, with a backup of each plan before its first change.
 - **Keyboard shortcut** — open the flyout from anywhere (Shift+Win+L by default, configurable).
 - **Fits in** — follows the Windows light, dark and high-contrast themes and your accent colour, switching live.
 - **Notices outside changes** — switching plans in Control Panel or with `powercfg` updates the tray straight away.
@@ -47,12 +50,41 @@ Right-click the tray icon → **Settings…**. Changes apply and save immediatel
 <p>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="ReadmeAssets/settings-dark.png">
-    <img src="ReadmeAssets/settings-light.png" width="547" alt="The Settings window: automatic switching, flyout options, keyboard shortcut, plan colours and startup">
+    <img src="ReadmeAssets/settings-light.png" width="547" alt="The Settings window: automatic switching, flyout options, keyboard shortcut, plan colours, power plans and startup">
   </picture>
   &nbsp;
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="ReadmeAssets/about-dark.png">
     <img src="ReadmeAssets/about-light.png" width="427" alt="The About window: version, active plan, power source, update status and credits">
+  </picture>
+</p>
+
+## Edit power plans
+
+Right-click the tray icon → **Edit power plans…**, or **Edit…** in Settings. Pick a plan on the left to see all its settings, grouped like Control Panel's advanced power options but with nothing hidden. Plugged-in and battery values sit side by side, tinted in the plan's colour.
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="ReadmeAssets/editor-dark.png">
+    <img src="ReadmeAssets/editor-light.png" width="840" alt="The power plan editor showing the Balanced plan's display settings, with plugged-in and battery values side by side and hidden settings marked Hidden">
+  </picture>
+</p>
+
+- **Search** by name or description. **Show hidden settings** adds the ones Windows keeps out of Control Panel, which are usually most of them.
+- **Changed from defaults** shows only what's been changed, each with its default underneath and a **Reset** button.
+- Changes save as you make them and take effect straight away on the active plan. **Undo** reverses them until you close the window.
+- Each plan is backed up before its first change (to `%LOCALAPPDATA%\Petrroll\PowerSwitcher\Backups`). **Restore** puts a plan back as it was, and **Restore a deleted plan…** brings back one you've deleted.
+
+Windows won't let two settings be changed without administrator rights: "Require a password on wakeup" and one processor core parking setting. The editor says so if you try.
+
+### Compare plans
+
+Right-click the tray icon → **Compare plans…** to see only the settings that differ between two plans. **Copy →** makes the right-hand plan match the left one for that setting, and **← Copy** does the opposite.
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="ReadmeAssets/compare-dark.png">
+    <img src="ReadmeAssets/compare-light.png" width="840" alt="Compare plans showing Ultimate Performance and Balanced side by side, each in its own colour, with copy buttons between them">
   </picture>
 </p>
 
