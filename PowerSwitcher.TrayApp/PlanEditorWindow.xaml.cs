@@ -118,6 +118,8 @@ namespace PowerSwitcher.TrayApp
 
             PlanHeading.Text = plan.Name;
             PlanNote.Text = plan.Guid == pwrManager.CurrentSchema?.Guid ? "Your active plan, so changes apply straight away." : "Changes apply whenever this plan is active.";
+            Resources["PluggedInTint"] = PlanTints.PluggedIn(plan.Dot);
+            Resources["OnBatteryTint"] = PlanTints.OnBattery(plan.Dot);
 
             applyFilter();
             updatePlanActions();

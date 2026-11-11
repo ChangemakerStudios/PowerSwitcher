@@ -18,14 +18,9 @@ namespace PowerSwitcher.TrayApp
     /// <summary>Shows the settings that differ between two power plans, and can copy a setting from one to the other.</summary>
     public partial class PlanCompareWindow : ThemedDialogWindow
     {
-        /// <summary>
-        /// Column backgrounds: each plan's columns are tinted with its tray colour, plugged in lighter and on battery stronger,
-        /// so all four columns can be told apart at a glance.
-        /// </summary>
+        /// <summary>The four column backgrounds: each plan's tray colour, see <see cref="PlanTints"/>.</summary>
         public sealed class ColumnTints
         {
-            const double PluggedIn = 0.10, OnBattery = 0.22;
-
             public Brush LeftAc { get; }
             public Brush LeftDc { get; }
             public Brush RightAc { get; }
@@ -33,18 +28,10 @@ namespace PowerSwitcher.TrayApp
 
             public ColumnTints(Brush left, Brush right)
             {
-                LeftAc = tint(left, PluggedIn);
-                LeftDc = tint(left, OnBattery);
-                RightAc = tint(right, PluggedIn);
-                RightDc = tint(right, OnBattery);
-            }
-
-            private static Brush tint(Brush dot, double opacity)
-            {
-                var color = (dot as SolidColorBrush)?.Color ?? Colors.Gray;
-                var brush = new SolidColorBrush(color) { Opacity = opacity };
-                brush.Freeze();
-                return brush;
+                LeftAc = PlanTints.PluggedIn(left);
+                LeftDc = PlanTints.OnBattery(left);
+                RightAc = PlanTints.PluggedIn(right);
+                RightDc = PlanTints.OnBattery(right);
             }
         }
 
