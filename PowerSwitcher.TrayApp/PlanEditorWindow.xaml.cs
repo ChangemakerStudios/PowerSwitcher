@@ -297,8 +297,12 @@ namespace PowerSwitcher.TrayApp
                 shown += matching.Count;
             }
 
+            // Settings the search and filters would show, but that are left out only because Windows hides them.
+            var hiddenOut = includeHidden ? 0 : rows.Count(row => row.Definition.IsHidden && PowerSettingFilter.Matches(row.Definition, row.Value, search, true, onlyChanged));
+
             SettingsList.ItemsSource = items;
-            ShownCount.Text = $"{shown} of {rows.Count} settings";
+            ShownCount.Text = $"Showing {shown} of {rows.Count} settings" + (hiddenOut > 0 ? $" ({hiddenOut} hidden)" : string.Empty);
+            EmptyText.Text = hiddenOut > 0 ? "No settings match. Turn on Show hidden settings to see the hidden ones that do." : "No settings match.";
             EmptyText.Visibility = shown == 0 && rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
