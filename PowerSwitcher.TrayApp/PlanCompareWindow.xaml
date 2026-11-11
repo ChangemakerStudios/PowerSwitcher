@@ -62,6 +62,19 @@
                 <Setter Property="CornerRadius" Value="6,6,0,0" />
             </Style>
 
+            <!-- A row lights up under the mouse. It reaches into the card's padding, and pads itself back, so its text stays put. -->
+            <Style x:Key="HoverRow" TargetType="Border">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Margin" Value="-8,0" />
+                <Setter Property="Padding" Value="8,0" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource CardHover}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
             <Style x:Key="CopyButton" TargetType="Button" BasedOn="{StaticResource RowAction}">
                 <Setter Property="Padding" Value="8,3" />
                 <Setter Property="VerticalAlignment" Value="Center" />
@@ -176,6 +189,7 @@
                                 <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
+                                            <Border Style="{StaticResource HoverRow}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
@@ -223,6 +237,7 @@
                                                     <TextBlock Style="{StaticResource DcValue}" Text="{Binding DcRight}" VerticalAlignment="Center" />
                                                 </Border>
                                             </Grid>
+                                            </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>

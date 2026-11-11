@@ -68,6 +68,16 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
 
+    <!-- A card that answers the mouse, for lists of rows. -->
+    <Style x:Key="HoverCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource CardHover}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource CardHoverBorder}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- Buttons -->
 
     <Style x:Key="DialogButton" TargetType="Button">

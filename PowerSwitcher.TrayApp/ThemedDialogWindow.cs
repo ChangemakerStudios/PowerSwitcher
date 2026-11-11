@@ -56,6 +56,9 @@ namespace PowerSwitcher.TrayApp
             setBrush("WindowBackground", SystemColors.WindowColor);
             setBrush("CardBackground", SystemColors.WindowColor);
             setBrush("CardBorder", SystemColors.WindowTextColor);
+            // A hovered card keeps its background, so text stays in the system's colours, and gets a highlighted outline instead.
+            setBrush("CardHover", SystemColors.WindowColor);
+            setBrush("CardHoverBorder", SystemColors.HighlightColor);
             setBrush("SubtleFill", SystemColors.HighlightColor);
             setBrush("TextPrimary", SystemColors.WindowTextColor);
             setBrush("TextSecondary", SystemColors.WindowTextColor);
@@ -73,6 +76,8 @@ namespace PowerSwitcher.TrayApp
             setBrush("WindowBackground", light ? rgb(0xF3, 0xF3, 0xF3) : rgb(0x20, 0x20, 0x20));
             setBrush("CardBackground", light ? rgb(0xFB, 0xFB, 0xFB) : rgb(0x2B, 0x2B, 0x2B));
             setBrush("CardBorder", light ? rgb(0xE5, 0xE5, 0xE5) : rgb(0x1D, 0x1D, 0x1D));
+            setBrush("CardHover", light ? rgb(0xF5, 0xF5, 0xF5) : rgb(0x32, 0x32, 0x32));
+            setBrush("CardHoverBorder", light ? rgb(0xE5, 0xE5, 0xE5) : rgb(0x1D, 0x1D, 0x1D));
             setBrush("SubtleFill", light ? rgb(0xEA, 0xEA, 0xEA) : rgb(0x3A, 0x3A, 0x3A));
             setBrush("TextPrimary", light ? rgb(0x1B, 0x1B, 0x1B) : Colors.White);
             setBrush("TextSecondary", light ? rgb(0x5F, 0x5F, 0x5F) : rgb(0xC5, 0xC5, 0xC5));

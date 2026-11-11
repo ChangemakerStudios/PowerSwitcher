@@ -208,7 +208,7 @@
 
             <DataTemplate DataType="{x:Type vm:SettingRow}">
                 <!-- No vertical padding, so the column tints run the full height of the card. -->
-                <Border Style="{StaticResource Card}" Padding="16,0">
+                <Border Style="{StaticResource HoverCard}" Padding="16,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
