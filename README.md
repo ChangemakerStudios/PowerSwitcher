@@ -53,7 +53,7 @@ Right-click the tray icon → **Settings…**. Changes apply and save immediatel
 <p>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="ReadmeAssets/settings-dark.png">
-    <img src="ReadmeAssets/settings-light.png" width="547" alt="The Settings window's Switching tab: the work-hours schedule with work days, hours, and a plan for work hours and one for the rest of the time">
+    <img src="ReadmeAssets/settings-light.png" width="625" alt="The Settings window's Switching tab: the work-hours schedule with work days, hours, and a plan for work hours and one for the rest of the time">
   </picture>
   &nbsp;
   <picture>
