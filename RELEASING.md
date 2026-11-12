@@ -1,6 +1,6 @@
 # Release Procedure
 
-PowerPlanSwitcher follows [Gitflow](https://nvie.com/posts/a-successful-git-branching-model/), uses [GitVersion](https://gitversion.net/) (ContinuousDelivery mode) for versions and [Velopack](https://velopack.io/) for the installer and updates. GitHub Actions builds, packages and uploads automatically based on the branch. The setup is modelled on [Papercut SMTP](https://github.com/ChangemakerStudios/Papercut-SMTP/blob/develop/RELEASING.md).
+PowerPlanSwitcher follows [Gitflow](https://nvie.com/posts/a-successful-git-branching-model/), uses [GitVersion](https://gitversion.net/) (ContinuousDelivery mode) for versions and [Velopack](https://velopack.io/) for the installer and updates. GitHub Actions builds, packages and uploads automatically based on the branch.
 
 ## Branch Overview
 
