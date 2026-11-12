@@ -24,7 +24,6 @@
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="ShowIf" />
-            <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
             <!--
                 Laid out like a merge tool: the first plan's columns on the left, the second plan's on the right,

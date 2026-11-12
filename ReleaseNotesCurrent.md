@@ -1,14 +1,13 @@
 # Release Notes
 
-## PowerPlanSwitcher v0.6.0
+## PowerPlanSwitcher v0.7.0
 
 ### New Features
-- **Power plan editor** - Choose "Edit power plans…" in the tray menu, or Edit… in Settings, to change any plan's settings, including the ones Windows hides. Plugged-in and battery values sit side by side in the plan's colour. Search by name or description, show only the settings changed from the defaults (each one shows its default), and reset any of them.
-- **Manage plans** - Duplicate, rename and delete plans. Each plan is backed up before its first change, so it can be put back as it was, even after it's been deleted. Undo reverses changes until the window is closed.
-- **Compare plans** - "Compare plans…" in the tray menu lists only the settings that differ between two plans, and copies a setting from one plan to the other.
+- **Work-hours schedule** - Use one plan during your work days and hours (say, High performance) and another the rest of the time (say, Balanced, set to sleep sooner). Turn it on in Settings → Switching. It switches when work hours start and end, so a plan you pick by hand stays until then. After the PC wakes from sleep, it catches up if one passed while it was asleep. If you also switch by power source, the battery plan still wins on battery.
+- **Your own plan order** - Move plans up and down in Settings → Plans. The flyout, the tray menu and every other list follow that order. "Use Windows' order" puts it back.
 
 ### Improvements
-- **Show only the built-in plans** - Now includes copies of Power saver, Balanced and High performance, which some PCs list instead of the originals.
+- **Settings in tabs** - Switching, Flyout, Plans and General, in a larger window.
 
-### Known Issues
-- Windows won't let two settings be changed without administrator rights: "Require a password on wakeup" and one processor core parking setting. The editor says so if you try.
+### Bug Fixes
+- **Tray menu** - Plans were listed in reverse order.

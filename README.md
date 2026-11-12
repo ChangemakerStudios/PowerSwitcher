@@ -19,8 +19,9 @@ The tray icon carries a coloured dot for the active plan, so you can tell at a g
 ## Features
 
 - **Quick switching** — click the tray icon for a Windows-style flyout of your power plans. It works from the keyboard too, and can be limited to the built-in plans.
-- **The active plan at a glance** — a coloured dot on the tray icon, one colour per plan. Pick each plan's colour in Settings.
+- **The active plan at a glance** — a coloured dot on the tray icon, one colour per plan. Pick each plan's colour, and the order plans are listed in, in Settings.
 - **Automatic switching** — choose one plan for when you're plugged in and another for battery.
+- **Work-hours schedule** — one plan during your work days and hours (say, High performance) and another the rest of the time (say, Balanced, set to sleep sooner).
 - **Edit any plan** — every setting, including the ones Windows hides, with plugged-in and battery values side by side. Search, see what's changed from the defaults, and reset it.
 - **Compare plans** — see only the settings that differ between two plans, and copy a setting across.
 - **Manage plans** — duplicate, rename and delete plans, with a backup of each plan before its first change.
@@ -45,12 +46,14 @@ Prefer not to install? The `-Portable.zip` runs from any folder.
 
 ## Settings
 
-Right-click the tray icon → **Settings…**. Changes apply and save immediately (to `%LOCALAPPDATA%\Petrroll\PowerSwitcher\PowerSwitcherSettings.xml`, which survives updates).
+Right-click the tray icon → **Settings…**. Changes apply and save immediately (to `%LOCALAPPDATA%\Petrroll\PowerSwitcher\PowerSwitcherSettings.xml`, which survives updates). The tabs are **Switching** (plugged in or on battery, and the schedule), **Flyout**, **Plans** (their order and tray colours) and **General**.
+
+**The schedule** switches plans when your work hours start and end. Work hours can run past midnight. If you pick a plan by hand, it stays until the next start or end. After the PC wakes from sleep, the app catches up if one passed while it was asleep. If you also switch by power source, the battery plan still wins on battery. Whether the PC sleeps after hours depends on the outside-hours plan's **Sleep after** setting, which you can change in the editor.
 
 <p>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="ReadmeAssets/settings-dark.png">
-    <img src="ReadmeAssets/settings-light.png" width="547" alt="The Settings window: automatic switching, flyout options, keyboard shortcut, plan colours, power plans and startup">
+    <img src="ReadmeAssets/settings-light.png" width="700" alt="The Settings window's Switching tab: the work-hours schedule with work days, hours, and a plan for work hours and one for the rest of the time">
   </picture>
   &nbsp;
   <picture>

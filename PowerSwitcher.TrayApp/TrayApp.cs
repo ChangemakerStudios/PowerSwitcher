@@ -33,6 +33,7 @@ namespace PowerSwitcher.TrayApp
 
             configuration = config;
             configuration.Data.PropertyChanged += Settings_PropertyChanged;
+            pwrManager.SetPlanOrder(configuration.Data.PlanOrder); // Every list of plans follows the user's order.
 
             updates = updateService;
             updates.UpdateReady += Updates_UpdateReady;
@@ -49,8 +50,9 @@ namespace PowerSwitcher.TrayApp
 
             this.ShowFlyout += (((App)Application.Current).MainWindow as MainWindow).ToggleWindowVisibility;
 
-            //Run automatic on-off-AC change at boot
-            powerStatusChanged();
+            // Apply the plugged-in/battery and schedule rules at start, then keep watching the schedule.
+            applyAutomaticPlan();
+            startScheduleChecks();
         }
 
         public void CreateAltMenu()
@@ -160,53 +162,87 @@ namespace PowerSwitcher.TrayApp
 
         #endregion
 
-        #region AutomaticOnACSwitchRelated
+        #region Automatic switching
+
+        // Settings that change which plan automatic switching wants; changing one applies it straight away.
+        static readonly string[] automaticSwitchingSettings =
+        {
+            nameof(PowerSwitcherSettings.AutomaticOnACSwitch),
+            nameof(PowerSwitcherSettings.AutomaticPlanGuidOnAC),
+            nameof(PowerSwitcherSettings.AutomaticPlanGuidOffAC),
+            nameof(PowerSwitcherSettings.ScheduleEnabled),
+            nameof(PowerSwitcherSettings.ScheduleDays),
+            nameof(PowerSwitcherSettings.ScheduleStartMinutes),
+            nameof(PowerSwitcherSettings.ScheduleEndMinutes),
+            nameof(PowerSwitcherSettings.SchedulePlanDuring),
+            nameof(PowerSwitcherSettings.SchedulePlanOutside),
+        };
 
         private void Settings_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            // Turning the rule on, or changing a plan it uses, takes effect immediately rather than at the next plug/unplug.
-            if (e.PropertyName == nameof(PowerSwitcherSettings.AutomaticOnACSwitch) ||
-                e.PropertyName == nameof(PowerSwitcherSettings.AutomaticPlanGuidOnAC) ||
-                e.PropertyName == nameof(PowerSwitcherSettings.AutomaticPlanGuidOffAC))
-            {
-                powerStatusChanged();
-            }
-            else if (e.PropertyName == nameof(PowerSwitcherSettings.PlanColors))
-            {
-                refreshTrayIcon();
-            }
+            if (automaticSwitchingSettings.Contains(e.PropertyName)) { applyAutomaticPlan(); }
+            else if (e.PropertyName == nameof(PowerSwitcherSettings.PlanColors)) { refreshTrayIcon(); }
+            else if (e.PropertyName == nameof(PowerSwitcherSettings.PlanOrder)) { pwrManager.SetPlanOrder(configuration.Data.PlanOrder); }
         }
 
         private void PwrManager_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(IPowerManager.CurrentPowerStatus)) { powerStatusChanged(); }
+            if (e.PropertyName == nameof(IPowerManager.CurrentPowerStatus)) { applyAutomaticPlan(); }
             if (e.PropertyName == nameof(IPowerManager.CurrentSchema)) { refreshTrayIcon(); }
         }
 
-        private void powerStatusChanged()
+        // Whether it was work time when automatic switching last ran, so the schedule only acts when work hours start or end.
+        bool? appliedWorkTime;
+        System.Windows.Threading.DispatcherTimer scheduleTimer;
+
+        private void applyAutomaticPlan()
         {
-            if(!configuration.Data.AutomaticOnACSwitch) { return; }
+            var now = DateTime.Now;
+            appliedWorkTime = configuration.Data.GetWorkSchedule().IsWorkTime(now);
 
-            var currentPowerPlugStatus = pwrManager.CurrentPowerStatus;
-            Guid schemaGuidToSwitch = default(Guid);
+            var target = PowerSwitcher.Scheduling.AutomaticPlan.For(configuration.Data.GetAutomaticSwitching(), pwrManager.CurrentPowerStatus, now);
+            var schema = pwrManager.Schemas.FirstOrDefault(sch => sch.Guid == target);
+            if (schema == null) { return; }
 
-            switch (currentPowerPlugStatus)
-            {
-                case PowerPlugStatus.Online:
-                    schemaGuidToSwitch = configuration.Data.AutomaticPlanGuidOnAC;
-                    break;
-                case PowerPlugStatus.Offline:
-                    schemaGuidToSwitch = configuration.Data.AutomaticPlanGuidOffAC;
-                    break;
-                default:
-                    break;
-            }
-
-            IPowerSchema schemaToSwitchTo = pwrManager.Schemas.FirstOrDefault(sch => sch.Guid == schemaGuidToSwitch);
-            if(schemaToSwitchTo == null) { return; }
-
-            pwrManager.SetPowerSchema(schemaToSwitchTo);
+            pwrManager.SetPowerSchema(schema);
         }
+
+        /// <summary>
+        /// Switches plan when work hours have started or ended since the last switch. A plan chosen by hand in between
+        /// stays until then. Runs every half minute, and after waking up or a clock change, so it doesn't need an exact timer.
+        /// </summary>
+        private void checkSchedule()
+        {
+            if (!configuration.Data.ScheduleEnabled) { return; }
+            if (configuration.Data.GetWorkSchedule().IsWorkTime(DateTime.Now) == appliedWorkTime) { return; }
+
+            applyAutomaticPlan();
+        }
+
+        private void startScheduleChecks()
+        {
+            scheduleTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+            scheduleTimer.Tick += (s, e) => checkSchedule();
+            scheduleTimer.Start();
+
+            Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
+            Microsoft.Win32.SystemEvents.TimeChanged += SystemEvents_TimeChanged;
+        }
+
+        private void stopScheduleChecks()
+        {
+            scheduleTimer?.Stop();
+            Microsoft.Win32.SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
+            Microsoft.Win32.SystemEvents.TimeChanged -= SystemEvents_TimeChanged;
+        }
+
+        // SystemEvents can arrive on their own thread.
+        private void SystemEvents_PowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+        {
+            if (e.Mode == Microsoft.Win32.PowerModes.Resume) { Application.Current?.Dispatcher.BeginInvoke(new Action(checkSchedule)); }
+        }
+
+        private void SystemEvents_TimeChanged(object sender, EventArgs e) => Application.Current?.Dispatcher.BeginInvoke(new Action(checkSchedule));
 
         #endregion
 
@@ -217,20 +253,22 @@ namespace PowerSwitcher.TrayApp
             clearPowerSchemasInTray();
 
             pwrManager.UpdateSchemas();
+            var position = 0;
             foreach (var powerSchema in pwrManager.Schemas)
             {
-                updateTrayMenuWithPowerSchema(powerSchema);
+                updateTrayMenuWithPowerSchema(powerSchema, position++);
             }
         }
 
-        private void updateTrayMenuWithPowerSchema(IPowerSchema powerSchema)
+        // Plans go at the top of the menu, in list order.
+        private void updateTrayMenuWithPowerSchema(IPowerSchema powerSchema, int position)
         {
             var newItemMain = getNewPowerSchemaItem(
                 powerSchema,
                 (s, ea) => switchToPowerSchema(powerSchema),
                 powerSchema.IsActive
                 );
-            _trayIcon.ContextMenuStrip.Items.Insert(0, newItemMain);
+            _trayIcon.ContextMenuStrip.Items.Insert(position, newItemMain);
         }
 
         private void clearPowerSchemasInTray()
@@ -338,6 +376,7 @@ namespace PowerSwitcher.TrayApp
 
         void Exit_Click(object sender, EventArgs e)
         {
+            stopScheduleChecks();
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
 

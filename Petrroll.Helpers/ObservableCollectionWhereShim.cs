@@ -186,20 +186,12 @@ namespace Petrroll.Helpers
         #endregion
 
         #region HandleOperations
+        // A move's positions in the filtered view can't be worked out from the base collection after the fact
+        // (its old index already reflects the move), so a moved item that shows here resets the view instead.
         private void handleMove(NotifyCollectionChangedEventArgs e)
         {
-            var newItems = getNewItems(e);
-            var delItems = getOldItems(e);
-
-            if (newItems.Count < 1 && delItems.Count < 1) { return; }
-
-            var newItemsIndex = getNewItemsIndex(e);
-            var oldItemsIndex = getOldItemsIndex(e);
-
-            if (newItems.Count < 1) { RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, delItems, oldItemsIndex)); }
-            else if (delItems.Count < 1) { RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, newItems, newItemsIndex)); }
-            else { RaiseCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, newItems, newItemsIndex, oldItemsIndex)); }
-
+            if (getNewItems(e).Count < 1) { return; }
+            handleReset();
         }
 
         private void handleReplace(NotifyCollectionChangedEventArgs e)
