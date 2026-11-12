@@ -33,6 +33,7 @@ namespace PowerSwitcher.TrayApp
 
             configuration = config;
             configuration.Data.PropertyChanged += Settings_PropertyChanged;
+            pwrManager.SetPlanOrder(configuration.Data.PlanOrder); // Every list of plans follows the user's order.
 
             updates = updateService;
             updates.UpdateReady += Updates_UpdateReady;
@@ -181,6 +182,7 @@ namespace PowerSwitcher.TrayApp
         {
             if (automaticSwitchingSettings.Contains(e.PropertyName)) { applyAutomaticPlan(); }
             else if (e.PropertyName == nameof(PowerSwitcherSettings.PlanColors)) { refreshTrayIcon(); }
+            else if (e.PropertyName == nameof(PowerSwitcherSettings.PlanOrder)) { pwrManager.SetPlanOrder(configuration.Data.PlanOrder); }
         }
 
         private void PwrManager_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -251,20 +253,22 @@ namespace PowerSwitcher.TrayApp
             clearPowerSchemasInTray();
 
             pwrManager.UpdateSchemas();
+            var position = 0;
             foreach (var powerSchema in pwrManager.Schemas)
             {
-                updateTrayMenuWithPowerSchema(powerSchema);
+                updateTrayMenuWithPowerSchema(powerSchema, position++);
             }
         }
 
-        private void updateTrayMenuWithPowerSchema(IPowerSchema powerSchema)
+        // Plans go at the top of the menu, in list order.
+        private void updateTrayMenuWithPowerSchema(IPowerSchema powerSchema, int position)
         {
             var newItemMain = getNewPowerSchemaItem(
                 powerSchema,
                 (s, ea) => switchToPowerSchema(powerSchema),
                 powerSchema.IsActive
                 );
-            _trayIcon.ContextMenuStrip.Items.Insert(0, newItemMain);
+            _trayIcon.ContextMenuStrip.Items.Insert(position, newItemMain);
         }
 
         private void clearPowerSchemasInTray()

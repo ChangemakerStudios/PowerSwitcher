@@ -58,11 +58,15 @@ namespace PowerSwitcher.TrayApp
             public string DefaultHex { get; }
             public List<ColorOption> Options { get; }
             public ColorOption Selected { get; }
+            public bool CanMoveUp { get; }
+            public bool CanMoveDown { get; }
 
-            public PlanColorRow(IPowerSchema schema, PowerSwitcherSettings settings)
+            public PlanColorRow(IPowerSchema schema, PowerSwitcherSettings settings, bool isFirst = false, bool isLast = false)
             {
                 Guid = schema.Guid;
                 Name = schema.Name;
+                CanMoveUp = !isFirst;
+                CanMoveDown = !isLast;
                 DefaultHex = TrayIconFactory.ToHex(TrayIconFactory.DefaultBadgeColorFor(schema.Guid, schema.Name));
                 CurrentColor = TrayIconFactory.BadgeColorFor(schema.Guid, schema.Name, settings).Value;
 
@@ -356,8 +360,57 @@ namespace PowerSwitcher.TrayApp
 
         #region Tray icon
 
-        private void loadPlanColors() =>
-            PlanColorList.ItemsSource = pwrManager.Schemas.Select(sch => new PlanColorRow(sch, configuration.Data)).ToList();
+        private void loadPlanColors()
+        {
+            var schemas = pwrManager.Schemas.ToList();
+            PlanColorList.ItemsSource = schemas
+                .Select((sch, index) => new PlanColorRow(sch, configuration.Data, isFirst: index == 0, isLast: index == schemas.Count - 1))
+                .ToList();
+            WindowsOrderButton.Visibility = configuration.Data.PlanOrder.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void PlanMove_Click(object sender, RoutedEventArgs e)
+        {
+            var button = (Button)sender;
+            if (!(button.DataContext is PlanColorRow row)) { return; }
+
+            var up = (string)button.Tag == "up";
+            var order = pwrManager.Schemas.Select(sch => sch.Guid).ToList();
+            var from = order.IndexOf(row.Guid);
+            var to = up ? from - 1 : from + 1;
+            if (from < 0 || to < 0 || to >= order.Count) { return; }
+
+            (order[from], order[to]) = (order[to], order[from]);
+            configuration.Data.SetPlanOrder(order); // TrayApp reorders the plans, and the lists here follow.
+            configuration.Save();
+
+            // The rows are rebuilt, so put focus back on the same plan's button (or its other one, at the top or bottom).
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() => focusMoveButton(row.Guid, up)));
+        }
+
+        private void focusMoveButton(Guid plan, bool up)
+        {
+            var buttons = findAll<Button>(PlanColorList).Where(b => b.DataContext is PlanColorRow r && r.Guid == plan && b.Tag is string).ToList();
+            var target = buttons.FirstOrDefault(b => (string)b.Tag == (up ? "up" : "down") && b.IsEnabled) ?? buttons.FirstOrDefault(b => b.IsEnabled);
+            target?.Focus();
+        }
+
+        private static IEnumerable<T> findAll<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T match) { yield return match; }
+                foreach (var nested in findAll<T>(child)) { yield return nested; }
+            }
+        }
+
+        private void WindowsOrderButton_Click(object sender, RoutedEventArgs e)
+        {
+            configuration.Data.SetPlanOrder(Enumerable.Empty<Guid>());
+            configuration.Save();
+            loadPlanColors();
+        }
 
         private void PlanColorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

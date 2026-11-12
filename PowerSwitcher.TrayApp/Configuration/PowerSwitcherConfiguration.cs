@@ -70,6 +70,15 @@ namespace PowerSwitcher.TrayApp.Configuration
         bool showOnlyDefaultSchemas = false;
         public bool ShowOnlyDefaultSchemas { get { return showOnlyDefaultSchemas; } set { showOnlyDefaultSchemas = value; RaisePropertyChangedEvent(nameof(ShowOnlyDefaultSchemas)); } }
 
+        /// <summary>Plans in the order the user put them; empty for Windows' order. Plans not listed come after, in Windows' order.</summary>
+        public List<Guid> PlanOrder { get; set; } = new List<Guid>();
+
+        public void SetPlanOrder(IEnumerable<Guid> order)
+        {
+            PlanOrder = order.ToList();
+            RaisePropertyChangedEvent(nameof(PlanOrder));
+        }
+
         /// <summary>Tray badge colours the user picked, by plan. Plans that aren't listed use their default colour.</summary>
         public List<PlanColor> PlanColors { get; set; } = new List<PlanColor>();
 

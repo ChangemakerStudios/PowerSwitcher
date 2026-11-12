@@ -213,25 +213,43 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- ───────── Tray icon ───────── -->
-            <TabItem Header="Tray icon">
+            <!-- ───────── Plans ───────── -->
+            <TabItem Header="Plans">
                 <ScrollViewer Style="{StaticResource TabPage}">
                     <StackPanel Margin="24,18,24,16">
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SettingTitle}" Text="Plan colors" />
-                                <TextBlock Style="{StaticResource SettingDescription}" Text="The dot on the tray icon shows which plan is active." />
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" x:Name="WindowsOrderButton" Style="{StaticResource RowAction}" VerticalAlignment="Top"
+                                            Content="Use Windows' order" Click="WindowsOrderButton_Click" />
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Style="{StaticResource SettingTitle}" Text="Order and colors" />
+                                        <TextBlock Style="{StaticResource SettingDescription}"
+                                                   Text="Plans appear in this order in the flyout, the tray menu and everywhere else. The dot on the tray icon shows which plan is active." />
+                                    </StackPanel>
+                                </DockPanel>
 
                                 <ItemsControl x:Name="PlanColorList" Margin="0,8,0,0" Focusable="False">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Margin="0,4,0,0">
                                                 <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
-                                                <ComboBox Grid.Column="1" Style="{StaticResource DropDown}" Width="220" MaxDropDownHeight="640"
+                                                <StackPanel Orientation="Horizontal" Margin="-6,0,8,0">
+                                                    <Button Style="{StaticResource RowAction}" Tag="up" Padding="7,5" Click="PlanMove_Click" IsEnabled="{Binding CanMoveUp}"
+                                                            ToolTip="Move up" AutomationProperties.Name="{Binding Name, StringFormat='Move {0} up'}">
+                                                        <TextBlock Text="&#xE70E;" FontFamily="{StaticResource IconFont}" FontSize="12" Foreground="{DynamicResource TextPrimary}" />
+                                                    </Button>
+                                                    <Button Style="{StaticResource RowAction}" Tag="down" Padding="7,5" Click="PlanMove_Click" IsEnabled="{Binding CanMoveDown}"
+                                                            ToolTip="Move down" AutomationProperties.Name="{Binding Name, StringFormat='Move {0} down'}">
+                                                        <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="12" Foreground="{DynamicResource TextPrimary}" />
+                                                    </Button>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                                                <ComboBox Grid.Column="2" Style="{StaticResource DropDown}" Width="220" MaxDropDownHeight="640"
                                                           ItemsSource="{Binding Options}" SelectedItem="{Binding Selected, Mode=OneTime}"
                                                           ItemTemplate="{StaticResource PlanTemplate}"
                                                           SelectionChanged="PlanColorBox_SelectionChanged"

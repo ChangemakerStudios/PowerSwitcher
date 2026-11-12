@@ -19,6 +19,9 @@ namespace PowerSwitcher
 
         void UpdateSchemas();
 
+        /// <summary>Keeps <see cref="Schemas"/> in this order of plans; plans it doesn't name follow, in Windows' order.</summary>
+        void SetPlanOrder(IEnumerable<Guid> order);
+
         void SetPowerSchema(IPowerSchema schema);
         void SetPowerSchema(Guid guid);
     }
@@ -91,6 +94,38 @@ namespace PowerSwitcher
                 { schemasToBeRemoved.Add(oldSchema); }
             }
             schemasToBeRemoved.ForEach(sch => Schemas.Remove(sch));
+
+            windowsOrder = newSchemas.Select(sch => sch.Guid).ToList();
+            applyPlanOrder();
+        }
+
+        List<Guid> planOrder = new List<Guid>();
+        List<Guid> windowsOrder = new List<Guid>();
+
+        public void SetPlanOrder(IEnumerable<Guid> order)
+        {
+            planOrder = order?.ToList() ?? new List<Guid>();
+            applyPlanOrder();
+        }
+
+        // Moves plans into place one by one, so the list (and anything bound to it) keeps its items.
+        private void applyPlanOrder()
+        {
+            int rank(IPowerSchema schema)
+            {
+                var chosen = planOrder.IndexOf(schema.Guid);
+                if (chosen >= 0) { return chosen; }
+
+                var listed = windowsOrder.IndexOf(schema.Guid);
+                return planOrder.Count + (listed >= 0 ? listed : windowsOrder.Count);
+            }
+
+            var wanted = Schemas.OrderBy(rank).ToList();
+            for (var index = 0; index < wanted.Count; index++)
+            {
+                var current = Schemas.IndexOf(wanted[index]);
+                if (current != index) { Schemas.Move(current, index); }
+            }
         }
 
         private void noSchemaIsActive()
