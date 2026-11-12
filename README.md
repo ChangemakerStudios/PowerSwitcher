@@ -3,7 +3,7 @@
 [![Latest release](https://img.shields.io/github/v/release/ChangemakerStudios/PowerSwitcher?label=release)](https://github.com/ChangemakerStudios/PowerSwitcher/releases/latest)
 [![Build](https://github.com/ChangemakerStudios/PowerSwitcher/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/ChangemakerStudios/PowerSwitcher/actions/workflows/build.yml)
 
-Switch Windows power plans from the tray — by hand, or automatically when you plug in or unplug.
+Switch Windows power plans from the tray — by hand, or automatically when you plug in or unplug or on a schedule (work hours).
 
 <p>
   <picture>
