@@ -77,7 +77,7 @@ Set `POWERSWITCHER_UPDATE_SOURCE` to a local `releases` folder before starting a
 |------|---------|
 | [build.cake](build.cake) | Cake build script — build, package and upload tasks |
 | [build.ps1](build.ps1) | Bootstrap: restores Cake, runs `build.cake` |
-| [build/Velopack.cake](build/Velopack.cake) | `vpk pack` / `vpk upload github` helpers (shared with Papercut) |
+| [build/Velopack.cake](build/Velopack.cake) | `vpk pack` / `vpk upload github` helpers |
 | [.github/workflows/build.yml](.github/workflows/build.yml) | CI pipeline |
 | [GitVersion.yml](GitVersion.yml) | Versioning configuration |
 | [ReleaseNotesCurrent.md](ReleaseNotesCurrent.md) | Notes for the current version, embedded in the packages |
