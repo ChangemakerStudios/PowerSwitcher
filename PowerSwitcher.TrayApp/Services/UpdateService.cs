@@ -22,7 +22,8 @@ namespace PowerSwitcher.TrayApp.Services
 
     /// <summary>
     /// Velopack updates from GitHub releases, on the channel this build was packed with (win-x64-stable,
-    /// win-x64-dev, …). Updates download in the background; the user restarts from the tray or About, otherwise
+    /// win-x64-dev, …). Checks 30 seconds after starting, every two hours, and after waking up or unlocking.
+    /// Updates download in the background; the user restarts from the tray or About, otherwise
     /// they're applied when the app exits. Ported from Papercut SMTP's ShellUpdater.
     /// Members are used from the UI thread; PropertyChanged is raised there.
     /// </summary>
@@ -31,7 +32,10 @@ namespace PowerSwitcher.TrayApp.Services
         public const string RepositoryUrl = "https://github.com/ChangemakerStudios/PowerSwitcher";
 
         static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(30);
-        static readonly TimeSpan CheckInterval = TimeSpan.FromHours(12);
+        static readonly TimeSpan CheckInterval = TimeSpan.FromHours(2);
+
+        /// <summary>Waking up, unlocking or opening About checks again if the last check is older than this.</summary>
+        public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(30);
 
         readonly UpdateManager manager;
         DispatcherTimer timer;
@@ -81,13 +85,33 @@ namespace PowerSwitcher.TrayApp.Services
                 await CheckAsync();
             };
             timer.Start();
+
+            // A PC left on or asleep overnight should find a new release in the morning, not up to two hours later.
+            dispatcher = Dispatcher.CurrentDispatcher;
+            Microsoft.Win32.SystemEvents.PowerModeChanged += (s, e) => { if (e.Mode == Microsoft.Win32.PowerModes.Resume) { checkSoonIfStale(); } };
+            Microsoft.Win32.SystemEvents.SessionSwitch += (s, e) => { if (e.Reason == Microsoft.Win32.SessionSwitchReason.SessionUnlock) { checkSoonIfStale(); } };
         }
+
+        Dispatcher dispatcher;
+        DateTime lastChecked = DateTime.MinValue;
+
+        // SystemEvents arrive on their own thread. Waking up, the network can take a moment to come back, so wait a little.
+        private void checkSoonIfStale() => dispatcher?.BeginInvoke(new Action(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(15));
+            await CheckIfStaleAsync();
+        }));
+
+        /// <summary>Checks only if the last check is older than <see cref="StaleAfter"/>.</summary>
+        public Task<UpdateState> CheckIfStaleAsync() =>
+            DateTime.UtcNow - lastChecked < StaleAfter ? Task.FromResult(State) : CheckAsync();
 
         public async Task<UpdateState> CheckAsync()
         {
             if (!IsInstalled) { return UpdateState.NotInstalled; }
             if (State == UpdateState.Ready || State == UpdateState.Checking) { return State; }
 
+            lastChecked = DateTime.UtcNow;
             setState(UpdateState.Checking);
             try
             {

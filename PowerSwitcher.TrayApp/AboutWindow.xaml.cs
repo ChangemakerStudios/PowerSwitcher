@@ -44,6 +44,9 @@ namespace PowerSwitcher.TrayApp
             updateUpdateStatus();
             pwrManager.PropertyChanged += PwrManager_PropertyChanged;
             updates.PropertyChanged += Updates_PropertyChanged;
+
+            // Opening About is often to see whether there's an update, so look if it's been a while.
+            Loaded += async (s, e) => await updates.CheckIfStaleAsync();
         }
 
         protected override void OnClosed(EventArgs e)
